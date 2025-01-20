@@ -1,0 +1,124 @@
+/* algemene styling */
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #1e1e2f;
+    color: #ffffff;
+}
+
+/* header styling */
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background-color: #282c34;
+    border-bottom: 2px solid #61dafb;
+}
+
+.header-left {
+    flex: 1;
+}
+
+#game-id {
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+}
+
+#player-list {
+    background-color: #3a3f5c;
+    border: 2px solid #61dafb;
+    padding: 0.5rem;
+    border-radius: 8px;
+}
+
+#player-list h2 {
+    margin: 0 0 0.5rem 0;
+}
+
+#player-list ul {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+}
+
+#player-list li {
+    font-size: 0.9rem;
+    margin: 0.2rem 0;
+}
+
+.header-center {
+    flex: 2;
+    text-align: center;
+    position: relative;
+    bottom: 35px
+}
+
+.header-right {
+    flex: 1;
+    text-align: right;
+    position: relative;
+    bottom: 50px
+}
+
+#account-dropdown {
+    display: inline-block;
+    position: relative;
+}
+
+#account-circle {
+    width: 40px;
+    height: 40px;
+    background-color: #61dafb;
+    color: #282c34;
+    font-weight: bold;
+    font-size: 1.2rem;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+}
+
+/* main game area styling */
+main {
+    padding: 1rem;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+#game-options {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    width: 80%;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.game-block {
+    background-color: #3a3f5c;
+    border: 2px solid #61dafb;
+    border-radius: 8px;
+    text-align: center;
+    padding: 1rem;
+    cursor: pointer;
+    transition: transform 0.2s, background-color 0.2s;
+}
+
+.game-block:hover {
+    transform: scale(1.05);
+    background-color: #4a5070;
+}
+
+/* footer styling */
+footer {
+    background-color: #282c34;
+    text-align: center;
+    padding: 0.5rem;
+    font-size: 0.8rem;
+}
