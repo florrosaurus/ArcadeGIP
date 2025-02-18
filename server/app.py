@@ -5,88 +5,128 @@ import os
 import random
 import string
 
-# basis padinstellingen
+# basis instellingen
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 CLIENT_DIR = os.path.abspath(os.path.join(BASE_DIR, "../client"))
 
 # flask-app instellen
 app = Flask(__name__, static_folder=CLIENT_DIR, static_url_path="")
-CORS(app)  # CORS inschakelen voor frontend-requests
-socketio = SocketIO(app, cors_allowed_origins="*")  # WebSockets inschakelen
+CORS(app)  # cors inschakelen voor frontend requests
+socketio = SocketIO(app, cors_allowed_origins="*")  # websockets inschakelen
 
-# actieve lobbies worden opgeslagen in een dictionary
-active_lobbies = {}  # { "CODE123": {"players": set()} }
+# actieve lobby's opslaan (max 4 spelers per lobby)
+MAX_PLAYERS = 4
+active_lobbies = {}  # { "CODE123": {"players": set(), "choices": {}} }
 
 def generate_unique_code():
-    """Genereert een unieke 6-letterige code voor een nieuwe lobby."""
+    """genereert unieke 6-letterige code"""
     while True:
         code = ''.join(random.choices(string.ascii_uppercase, k=6))  # 6 random hoofdletters
         if code not in active_lobbies:
-            active_lobbies[code] = {"players": set()}  # Nieuwe lobby opslaan
+            active_lobbies[code] = {"players": set(), "choices": {}}  # nieuwe lobby opslaan
             return code
 
-# **Frontend Bestanden Serveren**
+# **frontend bestanden serveren**
 @app.route("/")
 def serve_index():
-    """Geeft de startpagina (index.html) terug."""
+    """stuurt startpagina (index.html)"""
     return send_from_directory(CLIENT_DIR, "index.html")
 
 @app.route("/lobby.html")
 def serve_lobby():
-    """Geeft de lobbypagina (lobby.html) terug."""
+    """stuurt lobbypagina (lobby.html)"""
     return send_from_directory(CLIENT_DIR, "lobby.html")
 
-# **Lobby Aanmaken**
+# **lobby aanmaken**
 @app.route("/create_lobby", methods=["POST"])
 def create_lobby():
-    """Maakt een nieuwe lobby en retourneert de code."""
+    """maakt een nieuwe lobby en stuurt code terug"""
     code = generate_unique_code()
     return jsonify({"code": code})
 
-# **Lobby Joinen**
+# **lobby joinen**
 @app.route("/join_lobby", methods=["POST"])
 def join_lobby():
-    """Controleert of een lobby bestaat en laat de speler joinen als hij geldig is."""
+    """checkt of lobby bestaat, laat speler joinen als geldig"""
     data = request.json
-    code = data.get("code", "").upper()  # code in hoofdletters
-    if code in active_lobbies:
-        return jsonify({"success": True, "code": code})
-    return jsonify({"success": False}), 404  # foutmelding als de lobby niet bestaat
+    code = data.get("code", "").upper()  # altijd hoofdletters
 
-# **WebSockets events**
+    if code in active_lobbies:
+        if len(active_lobbies[code]["players"]) >= MAX_PLAYERS:
+            return jsonify({"success": False, "message": "lobby is full"}), 403
+        return jsonify({"success": True, "code": code})
+
+    return jsonify({"success": False}), 404  # fout als lobby niet bestaat
+
+# **websockets events**
 @socketio.on("join_lobby")
 def handle_join_lobby(data):
-    """Speler joint een lobby en krijgt realtime updates."""
+    """speler joint een lobby, krijgt updates"""
     code = data["code"]
     username = data["username"]
 
     if code in active_lobbies:
-        join_room(code)  # Socket.IO functie om speler in een "room" te zetten
-        active_lobbies[code]["players"].add(username)  # voeg de speler toe aan de lijst
+        if len(active_lobbies[code]["players"]) >= MAX_PLAYERS:
+            socketio.emit("lobby_full", {}, room=request.sid)
+            return
 
-        # stuur update naar alle spelers in de lobby
+        join_room(code)
+        active_lobbies[code]["players"].add(username)
+
+        # stuur update naar alle spelers
         socketio.emit("update_lobby", {
             "players": list(active_lobbies[code]["players"])
         }, room=code)
 
 @socketio.on("leave_lobby")
 def handle_leave_lobby(data):
-    """Speler verlaat een lobby en de lobby wordt verwijderd als hij leeg is."""
+    """speler verlaat lobby, update andere spelers"""
     code = data["code"]
     username = data["username"]
 
     if code in active_lobbies:
-        leave_room(code)  # speler verlaat de Socket.IO kamer
-        active_lobbies[code]["players"].discard(username)  # verwijder speler uit lijst
+        leave_room(code)
+        active_lobbies[code]["players"].discard(username)
 
-        if not active_lobbies[code]["players"]:  # als er geen spelers meer zijn, verwijder lobby
+        # verwijder spelkeuze als speler weggaat
+        if username in active_lobbies[code]["choices"]:
+            del active_lobbies[code]["choices"][username]
+
+        socketio.emit("player_left", {"username": username}, room=code)
+
+        if not active_lobbies[code]["players"]:  # als leeg, verwijder lobby
             del active_lobbies[code]
         else:
-            # stuur een update naar de resterende spelers
-            socketio.emit("update_lobby", {
-                "players": list(active_lobbies[code]["players"])
-            }, room=code)
+            socketio.emit("update_lobby", {"players": list(active_lobbies[code]["players"])}, room=code)
 
-# start de server
+@socketio.on("choose_game")
+def handle_choose_game(data):
+    """speler kiest game, update alle spelers"""
+    code = data["code"]
+    username = data["username"]
+    game = data["game"]
+
+    if code in active_lobbies:
+        active_lobbies[code]["choices"][username] = game
+
+        socketio.emit("game_choice_update", {
+            "username": username,
+            "game": game,
+            "choices": active_lobbies[code]["choices"],
+            "totalPlayers": len(active_lobbies[code]["players"])
+        }, room=code)
+
+@socketio.on("request_game_choices")
+def send_game_choices(data):
+    """stuurt spelkeuzes naar nieuwe spelers die joinen"""
+    code = data["code"]
+
+    if code in active_lobbies:
+        socketio.emit("game_choice_update", {
+            "choices": active_lobbies[code]["choices"],
+            "totalPlayers": len(active_lobbies[code]["players"])
+        }, room=request.sid)
+
+# start server
 if __name__ == "__main__":
     socketio.run(app, host="127.0.0.1", port=51234, debug=True)
