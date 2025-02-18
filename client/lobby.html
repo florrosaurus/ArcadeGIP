@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lobby</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.0/socket.io.js"></script>
+</head>
+<body>
+    <h1>Lobby</h1>
+    
+    <!-- lobby-info -->
+    <p>Lobby Code: <span id="lobbyCode"></span></p>
+    <p>Players: <span id="players"></span></p>
+
+    <!-- spelkeuze -->
+    <button onclick="startGame('snake')">Play Snake</button>
+    <button onclick="startGame('pong')">Play Pong</button>
+
+    <!-- lobby verlaten -->
+    <button onclick="leaveLobby()">Leave Lobby</button>
+
+    <script>
+        // webSocket-verbinding met de server
+        const socket = io("http://127.0.0.1:51234");  
+
+        // haal lobbycode op uit URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get("code");
+
+        // zet de lobbycode in de pagina
+        document.getElementById("lobbyCode").innerText = code;
+
+        // genereer unieke gebruikersnaam
+        let username = "Player" + Math.floor(Math.random() * 1000);
+
+        // stuur bericht naar de server dat deze speler de lobby joint
+        socket.emit("join_lobby", { code: code, username: username });
+
+        // luister naar updates van de server en werk de spelerslijst bij
+        socket.on("update_lobby", data => {
+            // markeer de gebruiker met "(you)"
+            let players = data.players.map(player => player === username ? `${player} (you)` : player);
+            document.getElementById("players").innerText = players.join(", ");
+        });
+
+        // functie om een spel te starten
+        function startGame(game) {
+            alert(game + " will start soon! (not implemented yet)");
+        }
+
+        // functie om lobby te verlaten
+        function leaveLobby() {
+            // laat server weten dat speler de lobby verlaat
+            socket.emit("leave_lobby", { code: code, username: username });
+
+            // stuur speler terug naar de startpagina
+            window.location.href = "/";
+        }
+    </script>
+</body>
+</html>
