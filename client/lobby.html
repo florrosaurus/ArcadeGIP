@@ -9,64 +9,46 @@
 <body>
     <h1>Lobby</h1>
     
-    <!-- lobby info -->
-    <p>lobby code: <span id="lobbyCode"></span></p>
-    <p>players: <span id="players"></span></p>
+    <p>Lobby code: <span id="lobbyCode"></span></p>
+    <p>Players: <span id="players"></span></p>
 
-    <!-- spelkeuze knoppen -->
-    <button onclick="chooseGame('snake')">play snake <span id="snakeCount">(0/0)</span></button>
-    <button onclick="chooseGame('pong')">play pong <span id="pongCount">(0/0)</span></button>
+    <button onclick="chooseGame('snake')">Play Snake <span id="snakeCount">(0/0)</span></button>
+    <button onclick="chooseGame('pong')">Play Pong <span id="pongCount">(0/0)</span></button>
 
-    <!-- lobby verlaten -->
-    <button onclick="leaveLobby()">leave lobby</button>
+    <button onclick="leaveLobby()">Leave Lobby</button>
 
     <script>
-        // websocket verbinding
-        const socket = io("http://127.0.0.1:51234");  
+        const socket = io("http://127.0.0.1:51234");
 
-        // haal lobbycode uit url
         const urlParams = new URLSearchParams(window.location.search);
         const code = urlParams.get("code");
 
-        // zet lobbycode in pagina
         document.getElementById("lobbyCode").innerText = code;
 
-        // genereer unieke gebruikersnaam
         let username = "player" + Math.floor(Math.random() * 1000);
 
-        // stuur bericht naar server dat speler joint
         socket.emit("join_lobby", { code: code, username: username });
 
-        // luister naar updates, werk lijst + counters bij
         socket.on("update_lobby", data => {
             let players = data.players.map(player => player === username ? `${player} (you)` : player);
             document.getElementById("players").innerText = players.join(", ");
-            socket.emit("request_game_choices", { code: code }); // vraag huidige keuzes op
+            socket.emit("request_game_choices", { code: code });
         });
 
-        // luister naar gamekeuze updates
         socket.on("game_choice_update", data => {
             updateGameCounts(data.choices, data.totalPlayers);
         });
 
-        // luister naar speler die leavt
-        socket.on("player_left", data => {
-            console.log(`${data.username} heeft de lobby verlaten`);
+        socket.on("start_game", data => {
+            console.log(`Game ${data.game} gestart`);
+            window.location.href = `/games/${data.game}/${data.game}.html?code=${code}`;
         });
 
-        // als lobby vol is, weiger nieuwe speler
-        socket.on("lobby_full", () => {
-            alert("lobby is full! max 4 spelers.");
-            window.location.href = "/";
-        });
-
-        // functie voor spel kiezen
         function chooseGame(game) {
-            console.log(`jij koos: ${game}`);
             socket.emit("choose_game", { code: code, username: username, game: game });
+            socket.emit("request_game_choices", { code: code });
         }
 
-        // update game counters
         function updateGameCounts(choices, totalPlayers) {
             let snakeCount = Object.values(choices).filter(choice => choice === "snake").length;
             let pongCount = Object.values(choices).filter(choice => choice === "pong").length;
@@ -75,7 +57,6 @@
             document.getElementById("pongCount").innerText = `(${pongCount}/${totalPlayers})`;
         }
 
-        // functie om lobby te leaven
         function leaveLobby() {
             socket.emit("leave_lobby", { code: code, username: username });
             window.location.href = "/";
