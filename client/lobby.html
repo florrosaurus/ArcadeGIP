@@ -3,19 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lobby</title>
+    <title>lobby</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.0/socket.io.js"></script>
 </head>
 <body>
-    <h1>Lobby</h1>
+    <h1>lobby</h1>
     
-    <p>Lobby code: <span id="lobbyCode"></span></p>
-    <p>Players: <span id="players"></span></p>
+    <p>lobby code: <span id="lobbyCode"></span></p>
+    <p>players: <span id="players"></span></p>
 
-    <button onclick="chooseGame('snake')">Play Snake <span id="snakeCount">(0/0)</span></button>
-    <button onclick="chooseGame('pong')">Play Pong <span id="pongCount">(0/0)</span></button>
+    <button onclick="chooseGame('snake')">Snake <span id="snakeCount">(0/0)</span></button>
+    <button onclick="chooseGame('pong')">Pong <span id="pongCount">(0/0)</span></button>
 
-    <button onclick="leaveLobby()">Leave Lobby</button>
+    <button onclick="leaveLobby()">leave lobby</button>
 
     <script>
         const socket = io("http://127.0.0.1:51234");
@@ -25,41 +25,43 @@
 
         document.getElementById("lobbyCode").innerText = code;
 
-        let username = "player" + Math.floor(Math.random() * 1000);
+        let username = sessionStorage.getItem("username") || `player${Math.floor(Math.random() * 1000)}`;
+        sessionStorage.setItem("username", username);
 
-        socket.emit("join_lobby", { code: code, username: username });
+        // speler join lobby
+        socket.emit("join_lobby", { code, username });
 
+        // update lijst spelers
         socket.on("update_lobby", data => {
-            let players = data.players.map(player => player === username ? `${player} (you)` : player);
+            let players = data.players.map(p => p === username ? `${p} (you)` : p);
             document.getElementById("players").innerText = players.join(", ");
-            socket.emit("request_game_choices", { code: code });
         });
 
-        socket.on("game_choice_update", data => {
-            updateGameCounts(data.choices, data.totalPlayers);
-        });
+        // update gamekeuze tellers
+        socket.on("game_choice_update", data => updateGameCounts(data.choices, data.totalPlayers));
 
+        // start game als iedereen dezelfde kiest
         socket.on("start_game", data => {
-            console.log(`Game ${data.game} gestart`);
-            window.location.href = `/games/${data.game}/${data.game}.html?code=${code}`;
+            window.location.href = `/games/${data.game}/${data.game}.html?code=${code}&user=${username}`;
         });
 
+        // speler kiest game
         function chooseGame(game) {
-            socket.emit("choose_game", { code: code, username: username, game: game });
-            socket.emit("request_game_choices", { code: code });
+            socket.emit("choose_game", { code, username, game });
         }
 
+        // update tellers van spelkeuzes
         function updateGameCounts(choices, totalPlayers) {
-            let snakeCount = Object.values(choices).filter(choice => choice === "snake").length;
-            let pongCount = Object.values(choices).filter(choice => choice === "pong").length;
+            let snakeCount = Object.values(choices).filter(c => c === "snake").length;
+            let pongCount = Object.values(choices).filter(c => c === "pong").length;
 
             document.getElementById("snakeCount").innerText = `(${snakeCount}/${totalPlayers})`;
             document.getElementById("pongCount").innerText = `(${pongCount}/${totalPlayers})`;
         }
 
+        // lobby verlaten
         function leaveLobby() {
-            socket.emit("leave_lobby", { code: code, username: username });
-            window.location.href = "/";
+            socket.emit("leave_lobby", { code, username });
         }
     </script>
 </body>
