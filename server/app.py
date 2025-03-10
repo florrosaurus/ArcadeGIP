@@ -1,6 +1,6 @@
 from flask import Flask, send_from_directory, request, jsonify
 from flask_cors import CORS
-from flask_socketio import SocketIO, join_room, leave_room, disconnect
+from flask_socketio import SocketIO, join_room, leave_room
 import os
 import random
 import string
@@ -31,22 +31,22 @@ def generate_unique_code():
 # frontend bestanden serveren
 @app.route("/")
 def serve_index():
-    """serveert startpagina"""
+    """startpagina"""
     return send_from_directory(CLIENT_DIR, "index.html")
 
 @app.route("/lobby.html")
 def serve_lobby():
-    """serveert lobbypagina"""
+    """lobbypagina"""
     return send_from_directory(CLIENT_DIR, "lobby.html")
 
 @app.route("/games/snake/snake.html")
 def serve_snake():
-    """serveert snake gamepagina"""
+    """snake gamepagina"""
     return send_from_directory(os.path.join(GAMES_DIR, "snake"), "snake.html")
 
 @app.route("/games/pong/pong.html")
 def serve_pong():
-    """serveert pong gamepagina"""
+    """pong gamepagina"""
     return send_from_directory(os.path.join(GAMES_DIR, "pong"), "pong.html")
 
 # lobby aanmaken
@@ -101,10 +101,9 @@ def handle_disconnect():
                 # stuur geüpdatete lobby naar overblijvende spelers
                 socketio.emit("update_lobby", {"players": list(lobby["players"])}, room=code)
 
-                # als lobby leeg is, verwijderen
-                if not lobby["players"]:
-                    games_in_progress.pop(code, None)  # stop lopende game
-                    active_lobbies.pop(code, None)  # verwijder lobby
+                # lobby alleen verwijderen als er geen actieve game meer is
+                if not lobby["players"] and code not in games_in_progress:
+                    active_lobbies.pop(code, None)
             break
 
 @socketio.on("choose_game")
@@ -115,7 +114,6 @@ def handle_choose_game(data):
     if code in active_lobbies:
         active_lobbies[code]["choices"][username] = game  # sla keuze op
 
-        # stuur geüpdatete keuzes naar alle spelers
         socketio.emit("game_choice_update", {
             "choices": active_lobbies[code]["choices"],
             "totalPlayers": len(active_lobbies[code]["players"])
@@ -130,7 +128,6 @@ def validate_game_start(code):
         chosen_games = set(choices.values())  # unieke keuzes
         total_players = len(active_lobbies[code]["players"])
 
-        # als alle spelers hetzelfde spel kiezen, start het
         if len(chosen_games) == 1 and len(choices) == total_players and total_players > 1:
             game = chosen_games.pop()
             games_in_progress[code] = {"players_in_game": set(active_lobbies[code]["players"]), "return_votes": set()}
@@ -143,8 +140,6 @@ def handle_return_to_lobby(data):
 
     if code in games_in_progress:
         game_info = games_in_progress[code]
-
-        # verwijder speler uit actieve game
         game_info["players_in_game"].discard(username)
         game_info["return_votes"].discard(username)
 
@@ -154,6 +149,36 @@ def handle_return_to_lobby(data):
         # als laatste speler vertrekt, verwijder game
         if not game_info["players_in_game"]:
             del games_in_progress[code]
+
+    if code in active_lobbies:
+        active_lobbies[code]["players"].add(username)
+        join_room(code)
+
+        socketio.emit("update_lobby", {
+            "players": list(active_lobbies[code]["players"]),
+            "choices": active_lobbies[code]["choices"]
+        }, room=code)
+
+    if code in active_lobbies and not active_lobbies[code]["players"]:
+        print(f"🗑️ lobby {code} wordt alsnog verwijderd na game")
+        del active_lobbies[code]
+
+@socketio.on("leave_lobby")
+def handle_leave_lobby(data):
+    """laat speler lobby verlaten"""
+    code, username = data["code"], data["username"]
+
+    if code in active_lobbies:
+        active_lobbies[code]["players"].discard(username)
+        active_lobbies[code]["choices"].pop(username, None)
+
+        socketio.emit("update_lobby", {"players": list(active_lobbies[code]["players"])}, room=code)
+
+        if not active_lobbies[code]["players"] and code not in games_in_progress:
+            print(f"🗑️ lobby {code} verwijderd (geen spelers, geen game)")
+            active_lobbies.pop(code, None)
+
+    socketio.emit("redirect_to_home", {}, room=request.sid)
 
 # start server
 if __name__ == "__main__":

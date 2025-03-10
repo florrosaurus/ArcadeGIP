@@ -28,13 +28,28 @@
         let username = sessionStorage.getItem("username") || `player${Math.floor(Math.random() * 1000)}`;
         sessionStorage.setItem("username", username);
 
+        // automatisch opnieuw lobby joinen bij pagina-lading
+        window.onload = () => {
+            console.log("🔄 Terug in de lobby, opnieuw verbinden...");
+            socket.emit("join_lobby", { code, username });
+        };
+
         // speler join lobby
         socket.emit("join_lobby", { code, username });
 
         // update lijst spelers
         socket.on("update_lobby", data => {
+            console.log("🔄 Update lobby ontvangen:", data);
+
+            if (!data.players || data.players.length === 0) {
+                console.warn("⚠️ Geen spelers in de lobby gedetecteerd!");
+                return;
+            }
+
             let players = data.players.map(p => p === username ? `${p} (you)` : p);
             document.getElementById("players").innerText = players.join(", ");
+
+            updateGameCounts(data.choices, data.players.length);
         });
 
         // update gamekeuze tellers
@@ -58,6 +73,11 @@
             document.getElementById("snakeCount").innerText = `(${snakeCount}/${totalPlayers})`;
             document.getElementById("pongCount").innerText = `(${pongCount}/${totalPlayers})`;
         }
+        
+        // luister naar de redirect naar de homepage
+        socket.on("redirect_to_home", () => {
+            window.location.href = "/";
+        });
 
         // lobby verlaten
         function leaveLobby() {
