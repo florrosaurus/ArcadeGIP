@@ -21,6 +21,16 @@ socket.on("update_game_players", data => {
     playerList[playerList.length - 1] += ` (${data.players.length})`; // laatste speler krijgt het totaal
 
     document.getElementById("players").innerText = playerList.join(", ");
+
+    // toon waarschuwing
+    let warningIcon = document.getElementById("warningIcon");
+    if (data.players.length < 2) { // pas dit aan voor andere spelregels :)
+        warningIcon.style.display = "inline";
+        warningIcon.innerText = "⚠️";
+        warningIcon.title = "te weinig spelers voor snake";
+    } else {
+        warningIcon.style.display = "none";
+    }
 });
 
 // luisteren naar terugkeer event

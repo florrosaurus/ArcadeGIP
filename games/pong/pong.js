@@ -6,7 +6,7 @@ const code = urlParams.get("code");
 let username = sessionStorage.getItem("username") || `player${Math.floor(Math.random() * 1000)}`;
 sessionStorage.setItem("username", username);
 
-console.log(`🔗 Verbonden met server als ${username} in game ${code}`);
+console.log(`🔗 Verbonden met server als ${username} in game ${code} (Pong)`);
 
 // speler joint game-room
 socket.emit("join_game", { code, username });
@@ -21,6 +21,16 @@ socket.on("update_game_players", data => {
     playerList[playerList.length - 1] += ` (${data.players.length})`; // laatste speler krijgt het totaal
 
     document.getElementById("players").innerText = playerList.join(", ");
+
+    // toon waarschuwing
+    let warningIcon = document.getElementById("warningIcon");
+    if (![2, 4].includes(data.players.length)) { // pong kan alleen met 2 of 4 spelers
+        warningIcon.style.display = "inline";
+        warningIcon.innerText = "⚠️";
+        warningIcon.title = "pong kan alleen met 2 of 4 spelers gespeeld worden";
+    } else {
+        warningIcon.style.display = "none";
+    }
 });
 
 // luisteren naar terugkeer event

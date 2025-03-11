@@ -5,10 +5,13 @@
     <title>snake</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.js"></script>
     <script src="/games/snake/snake.js" defer></script>
+    <link rel="stylesheet" href="/games/snake/snake.css">
 </head>
 <body>
     <h1>snake</h1>
-    <p>players: <span id="players"></span></p>
+    <p class="player-container">
+        players: <span id="players"></span><span id="warningIcon" class="warning-icon" title=""></span>
+    </p>    
     <button id="returnButton">Terug naar Lobby</button>
 </body>
 </html>

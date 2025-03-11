@@ -5,9 +5,13 @@
     <title>pong</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.js"></script>
     <script src="/games/pong/pong.js" defer></script>
+    <link rel="stylesheet" href="/games/pong/pong.css">
 </head>
 <body>
     <h1>pong</h1>
+    <p class="player-container">
+        players: <span id="players"></span><span id="warningIcon" class="warning-icon" title=""></span>
+    </p>    
     <button id="returnButton">Terug naar Lobby</button>
 </body>
 </html>
