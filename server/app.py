@@ -39,15 +39,15 @@ def serve_lobby():
     """lobbypagina"""
     return send_from_directory(CLIENT_DIR, "lobby.html")
 
-@app.route("/games/snake/snake.html")
-def serve_snake():
-    """snake gamepagina"""
-    return send_from_directory(os.path.join(GAMES_DIR, "snake"), "snake.html")
+@app.route("/games/snake/<path:filename>")
+def serve_snake_files(filename):
+    """snake bestanden"""
+    return send_from_directory(os.path.join(GAMES_DIR, "snake"), filename)
 
-@app.route("/games/pong/pong.html")
-def serve_pong():
-    """pong gamepagina"""
-    return send_from_directory(os.path.join(GAMES_DIR, "pong"), "pong.html")
+@app.route("/games/pong/<path:filename>")
+def serve_pong_files(filename):
+    """pong bestanden"""
+    return send_from_directory(os.path.join(GAMES_DIR, "pong"), filename)
 
 # lobby aanmaken
 @app.route("/create_lobby", methods=["POST"])
@@ -133,6 +133,19 @@ def validate_game_start(code):
             games_in_progress[code] = {"players_in_game": set(active_lobbies[code]["players"]), "return_votes": set()}
             socketio.emit("start_game", {"game": game}, room=code)
 
+@socketio.on("join_game")
+def handle_join_game(data):
+    """speler joint game en ontvangt huidige spelerslijst"""
+    code, username = data["code"], data["username"]
+
+    if code in games_in_progress:
+        games_in_progress[code]["players_in_game"].add(username)
+        join_room(code)
+
+        socketio.emit("update_game_players", {
+            "players": list(games_in_progress[code]["players_in_game"])
+        }, room=code)
+
 @socketio.on("return_to_lobby")
 def handle_return_to_lobby(data):
     """stuurt individuele speler terug naar lobby"""
@@ -142,6 +155,11 @@ def handle_return_to_lobby(data):
         game_info = games_in_progress[code]
         game_info["players_in_game"].discard(username)
         game_info["return_votes"].discard(username)
+
+        # stuur update naar overblijvende spelers
+        socketio.emit("update_game_players", {
+            "players": list(game_info["players_in_game"])
+        }, room=code)
 
         # stuur alleen deze speler terug
         socketio.emit("return_lobby", {"code": code}, room=request.sid)
