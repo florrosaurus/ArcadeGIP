@@ -139,12 +139,40 @@ def handle_join_game(data):
     code, username = data["code"], data["username"]
 
     if code in games_in_progress:
-        games_in_progress[code]["players_in_game"].add(username)
+        game = games_in_progress[code]
+        game.setdefault("players_in_game", set())
+        game.setdefault("ready_votes", set())
+        game["players_in_game"].add(username)
         join_room(code)
 
+        # stuur spelerslijst naar iedereen
         socketio.emit("update_game_players", {
-            "players": list(games_in_progress[code]["players_in_game"])
+            "players": list(game["players_in_game"])
         }, room=code)
+
+        # stuur teller update naar iedereen
+        socketio.emit("update_ready_votes", {
+            "votes": list(game["ready_votes"]),
+            "totalPlayers": len(game["players_in_game"])
+        }, room=code)
+
+@socketio.on("player_ready")
+def handle_player_ready(data):
+    code = data["code"]
+    username = data["username"]
+
+    if code in games_in_progress:
+        game = games_in_progress[code]
+        game.setdefault("ready_votes", set())
+        game["ready_votes"].add(username)
+
+        socketio.emit("update_ready_votes", {
+            "votes": list(game["ready_votes"]),
+            "totalPlayers": len(game["players_in_game"])  # hier voeg je hem toe
+        }, room=code)
+
+        if game["ready_votes"] == game["players_in_game"]:
+            socketio.emit("start_countdown", {}, room=code)
 
 @socketio.on("return_to_lobby")
 def handle_return_to_lobby(data):
@@ -159,6 +187,11 @@ def handle_return_to_lobby(data):
         # stuur update naar overblijvende spelers
         socketio.emit("update_game_players", {
             "players": list(game_info["players_in_game"])
+        }, room=code)
+
+        socketio.emit("update_ready_votes", {
+            "votes": list(game_info["ready_votes"]),
+            "totalPlayers": len(game_info["players_in_game"])
         }, room=code)
 
         # stuur alleen deze speler terug

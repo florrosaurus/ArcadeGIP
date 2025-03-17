@@ -9,15 +9,21 @@ sessionStorage.setItem("username", username);
 // game parameters
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
+const readyButton = document.getElementById("readyButton");
+const readyCounter = document.getElementById("readyCounter");
 
 // snake parameters
 const snakes = {};
 const colors = ["red", "blue", "green", "yellow"]; // kleuren per speler
+let readyVotes = [];
+let totalPlayers = 0;
+let gameStarted = false;
+let countdown = null;
 
 // speler joint game-room
 socket.emit("join_game", { code, username });
 
-// functie om snakes te spawnen
+// snakes spawnen
 function spawnSnakes(players) {
     const padding = 3; // afstand van de rand
     const gridSize = Math.floor(canvasSize / 20); // aantal cellen in grid
@@ -25,8 +31,8 @@ function spawnSnakes(players) {
     const positions = [
         { x: padding, y: Math.floor(gridSize / 2), direction: "right" },  // links → rechts
         { x: gridSize - padding - 1, y: Math.floor(gridSize / 2), direction: "left" },  // rechts → links
-        { x: Math.floor(gridSize / 2) - 1, y: padding, direction: "down" },  // boven → beneden
-        { x: Math.floor(gridSize / 2) - 1, y: gridSize - padding - 1, direction: "up" }  // onder → boven
+        { x: Math.floor(gridSize / 2), y: padding, direction: "down" },  // boven → beneden
+        { x: Math.floor(gridSize / 2), y: gridSize - padding - 1, direction: "up" }  // onder → boven
     ];
 
     players.forEach((player, index) => {
@@ -58,37 +64,61 @@ function drawSnakes() {
 
     Object.keys(snakes).forEach(player => {
         const snake = snakes[player];
-
-        if (!snake) {
-            return;
-        }
-
-        console.log(`teken snake van ${player}:`, snake.body);
+        if (!snake) return;
 
         ctx.fillStyle = snake.color;
         snake.body.forEach((segment, index) => {
             if (player === username) {
-                ctx.globalAlpha = index % 2 === 0 ? 0.7 : 1; // flikkerende blokjes, duid jouw slang aan
+                ctx.globalAlpha = index % 2 === 0 ? 0.7 : 1;
             } else {
                 ctx.globalAlpha = 1;
             }
-            ctx.fillRect(segment.x * 20, segment.y * 20, 20, 20); // schaalfix
+            ctx.fillRect(segment.x * 20, segment.y * 20, 20, 20);
         });
-
-        ctx.globalAlpha = 1; // reset transparantie
+        ctx.globalAlpha = 1;
     });
 }
 
-// update spelerslijst bij game join
+// klik ready button
+readyButton.addEventListener("click", () => {
+    socket.emit("player_ready", { code, username });
+    readyButton.disabled = true;
+});
+
+// votes bijwerken
+socket.on("update_ready_votes", data => {
+    readyVotes = data.votes;
+    totalPlayers = data.totalPlayers;
+    readyCounter.innerText = `(${readyVotes.length}/${totalPlayers})`;
+});
+
+// countdown starten
+socket.on("start_countdown", () => {
+    readyButton.style.display = "none";
+    readyCounter.style.display = "none";
+
+    let counter = 3;
+    countdown = setInterval(() => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawSnakes();
+        ctx.fillStyle = "black";
+        ctx.font = "50px Arial";
+        ctx.fillText(counter, canvas.width / 2 - 10, canvas.height / 2);
+        counter--;
+        if (counter < 0) {
+            clearInterval(countdown);
+            gameStarted = true;
+            drawSnakes();
+            // hier movement
+        }
+    }, 1000);
+});
+
+// spelerslijst + canvas schalen
 socket.on("update_game_players", data => {
-    if (!data.players || data.players.length === 0) {
-        return;
-    }
+    if (!data.players || data.players.length === 0) return;
 
-    let playerList = data.players.map(p => p === username ? `${p} (you)` : p);
-    playerList[playerList.length - 1] += ` (${data.players.length})`; // laatste speler krijgt het totaal
-
-    document.getElementById("players").innerText = playerList.join(", ");
+    document.getElementById("players").innerText = data.players.map(p => p === username ? `${p} (you)` : p).join(", ") + ` (${data.players.length})`;
     updateGameSize(data.players.length);
 
     spawnSnakes(data.players);
@@ -108,16 +138,14 @@ function updateGameSize(playerCount) {
     canvasSize = Math.min(300 + (playerCount - 1) * 100, 600); // schalen op basis van spelers
     canvas.width = canvasSize;
     canvas.height = canvasSize;
-    
-    console.log(`speelveld aangepast: ${canvasSize} x ${canvasSize}`);
 }
 
-// luisteren naar terugkeer event
+// terug naar lobby
 socket.on("return_lobby", data => {
     window.location.assign(`/lobby.html?code=${data.code}`);
 });
 
-// speler stemt om terug te keren naar lobby
+// lobby knop
 document.getElementById("returnButton").addEventListener("click", () => {
     socket.emit("return_to_lobby", { code, username });
 });
