@@ -19,8 +19,17 @@ let readyVotes = [];
 let totalPlayers = 0;
 let gameStarted = false;
 let countdown = null;
+let moveInterval = null;
+let canChangeDirection = true;
+let isDead = false;
+let winner = null;
 
-// speler joint game-room
+const keyMap = {
+    ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right",
+    w: "up", s: "down", a: "left", d: "right", z: "up", q: "left"
+};
+
+// speler joint game room
 socket.emit("join_game", { code, username });
 
 // snakes spawnen
@@ -64,7 +73,7 @@ function drawSnakes() {
 
     Object.keys(snakes).forEach(player => {
         const snake = snakes[player];
-        if (!snake) return;
+        if (!snake || !snake.alive) return;
 
         ctx.fillStyle = snake.color;
         snake.body.forEach((segment, index) => {
@@ -77,9 +86,97 @@ function drawSnakes() {
         });
         ctx.globalAlpha = 1;
     });
+
+    if (winner) {
+        ctx.fillStyle = winner.color;
+        ctx.font = "30px Arial";
+        ctx.fillText(`${winner.name} heeft gewonnen!`, canvas.width / 2 - 100, canvas.height / 2);
+    } else if (isDead) {
+        ctx.fillStyle = "red";
+        ctx.font = "30px Arial";
+        ctx.fillText("GAME OVER", canvas.width / 2 - 80, canvas.height / 2);
+    }
 }
 
-// klik ready button
+window.addEventListener("keydown", (e) => {
+    if (!gameStarted || !snakes[username] || !snakes[username].alive || !canChangeDirection || winner) return;
+    const dir = keyMap[e.key];
+    if (dir && isValidDirection(dir)) {
+        snakes[username].direction = dir;
+        canChangeDirection = false;
+        socket.emit("snake_move", { code, username, direction: dir });
+    }
+});
+
+function isValidDirection(newDir) {
+    const current = snakes[username].direction;
+    return !(
+        (current === "up" && newDir === "down") ||
+        (current === "down" && newDir === "up") ||
+        (current === "left" && newDir === "right") ||
+        (current === "right" && newDir === "left")
+    );
+}
+
+function moveSnake(player) {
+    const snake = snakes[player];
+    if (!snake.alive) return;
+    const head = { ...snake.body[0] };
+
+    if (snake.direction === "up") head.y--;
+    if (snake.direction === "down") head.y++;
+    if (snake.direction === "left") head.x--;
+    if (snake.direction === "right") head.x++;
+
+    if (head.x < 0 || head.x >= canvas.width / 20 || head.y < 0 || head.y >= canvas.height / 20) {
+        if (player === username) handleDeath();
+        snake.alive = false;
+        checkForWinner();
+        return;
+    }
+
+    for (let p in snakes) {
+        if (!snakes[p].alive) continue;
+        for (let seg of snakes[p].body) {
+            if (seg.x === head.x && seg.y === head.y) {
+                if (player === username) handleDeath();
+                snake.alive = false;
+                checkForWinner();
+                return;
+            }
+        }
+    }
+
+    snake.body.unshift(head);
+    snake.body.pop();
+}
+
+function handleDeath() {
+    isDead = true;
+}
+
+function checkForWinner() {
+    const alivePlayers = Object.keys(snakes).filter(p => snakes[p].alive);
+    if (alivePlayers.length === 1) {
+        const lastPlayer = alivePlayers[0];
+        winner = { name: lastPlayer, color: snakes[lastPlayer].color };
+        clearInterval(moveInterval);
+        drawSnakes();
+    }
+}
+
+socket.on("update_snake_direction", data => {
+    if (snakes[data.username]) {
+        snakes[data.username].direction = data.direction;
+    }
+});
+
+function gameLoop() {
+    canChangeDirection = true;
+    Object.keys(snakes).forEach(player => moveSnake(player));
+    drawSnakes();
+}
+
 readyButton.addEventListener("click", () => {
     socket.emit("player_ready", { code, username });
     readyButton.disabled = true;
@@ -108,8 +205,7 @@ socket.on("start_countdown", () => {
         if (counter < 0) {
             clearInterval(countdown);
             gameStarted = true;
-            drawSnakes();
-            // hier movement
+            moveInterval = setInterval(gameLoop, 200);
         }
     }, 1000);
 });
