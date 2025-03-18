@@ -174,6 +174,26 @@ def handle_player_ready(data):
         if game["ready_votes"] == game["players_in_game"]:
             socketio.emit("start_countdown", {}, room=code)
 
+@socketio.on("player_rematch_vote")
+def handle_player_rematch_vote(data):
+    code = data["code"]
+    username = data["username"]
+
+    if code in games_in_progress:
+        game = games_in_progress[code]
+        game.setdefault("rematch_votes", set())
+        game["rematch_votes"].add(username)
+
+        socketio.emit("update_rematch_votes", {
+            "votes": list(game["rematch_votes"]),
+            "totalPlayers": len(game["players_in_game"])
+        }, room=code)
+
+        if game["rematch_votes"] == game["players_in_game"]:
+            game["ready_votes"] = set()
+            game["rematch_votes"] = set()
+            socketio.emit("start_countdown", {}, room=code)
+
 # sync tussen browsers voor snake movements
 @socketio.on("snake_move")
 def handle_snake_move(data):
