@@ -155,6 +155,8 @@ function checkForWinner() {
         rematchCounter.style.display = "inline-block";
         rematchButton.disabled = false;
         rematchCounter.innerText = `(0/${playerList.length})`;
+
+        document.getElementById("returnButton").disabled = false; // unlock hier
     }
 }
 
@@ -185,6 +187,7 @@ socket.on("start_countdown", () => {
         if (counter < 0) {
             clearInterval(countdown);
             gameStarted = true;
+            document.getElementById("returnButton").disabled = true; // disable hier!
             moveInterval = setInterval(gameLoop, 200);
         }
     }, 1000);
@@ -242,6 +245,7 @@ socket.on("disconnect", reason => {
     console.warn(`⚡ Verbinding verbroken: ${reason}`);
 });
 
+// spelers + warning updates
 socket.on("update_game_players", data => {
     if (!data.players || data.players.length === 0) return;
     playerList = data.players;
