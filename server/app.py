@@ -174,6 +174,14 @@ def handle_player_ready(data):
         if game["ready_votes"] == game["players_in_game"]:
             socketio.emit("start_countdown", {}, room=code)
 
+# sync tussen browsers voor snake movements
+@socketio.on("snake_move")
+def handle_snake_move(data):
+    """update richting van een speler en broadcast naar anderen"""
+    code, username, direction = data["code"], data["username"], data["direction"]
+    if code in games_in_progress:
+        socketio.emit("update_snake_direction", {"username": username, "direction": direction}, room=code)
+
 @socketio.on("return_to_lobby")
 def handle_return_to_lobby(data):
     """stuurt individuele speler terug naar lobby"""
