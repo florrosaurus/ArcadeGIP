@@ -8,28 +8,40 @@ document.getElementById("lobbyCode").innerText = code;
 let username = sessionStorage.getItem("username") || `player${Math.floor(Math.random() * 1000)}`;
 sessionStorage.setItem("username", username);
 
+function triggerGameSync() {
+    socket.emit("trigger_sync", { code });
+}
+
 // automatisch opnieuw lobby joinen bij pagina-lading
 window.onload = () => {
     console.log("🔄 Terug in de lobby, opnieuw verbinden...");
     socket.emit("join_lobby", { code, username });
+    triggerGameSync();
 };
 
 // speler join lobby
 socket.emit("join_lobby", { code, username });
+triggerGameSync();
 
 // update lijst spelers
 socket.on("update_lobby", data => {
-    console.log("🔄 Update lobby ontvangen:", data);
+    const playersInLobby = data.players_in_lobby.length;
+    const playersInGame = data.players_in_game || 0;
+    const combined = data.combined;
 
-    if (!data.players || data.players.length === 0) {
-        console.warn("⚠️ Geen spelers in de lobby gedetecteerd!");
-        return;
-    }
+    document.getElementById("players").innerText = data.players.map(p => p === username ? `${p} (you)` : p).join(", ");
+    document.getElementById("combinedCount").innerText = `${combined}/4 total`;
+    document.getElementById("inLobbyOnly").innerText = `${playersInGame} in game`;
+});
 
-    let players = data.players.map(p => p === username ? `${p} (you)` : p);
-    document.getElementById("players").innerText = players.join(", ");
+// ontvangt updates vanuit de game-room (game-side sync)
+socket.on("update_game_players", data => {
+    const playersInGame = data.players.length;
+    const playersInLobby = data.players_in_lobby;
+    const combined = playersInGame + playersInLobby;
 
-    updateGameCounts(data.choices, data.players.length);
+    document.getElementById("combinedCount").innerText = `${combined}/4 total`;
+    document.getElementById("inLobbyOnly").innerText = `${playersInGame} in game`;
 });
 
 // update gamekeuze tellers
@@ -43,6 +55,7 @@ socket.on("start_game", data => {
 // speler kiest game
 function chooseGame(game) {
     socket.emit("choose_game", { code, username, game });
+    triggerGameSync();
 }
 
 // update tellers van spelkeuzes
@@ -54,7 +67,12 @@ function updateGameCounts(choices, totalPlayers) {
     document.getElementById("pongCount").innerText = `(${pongCount}/${totalPlayers})`;
 }
 
-// luister naar de redirect naar de homepage
+// error handlers
+socket.on("lobby_full", () => {
+    alert("⚠️ lobby zit vol (max 4)");
+    window.location.href = "/";
+});
+
 socket.on("redirect_to_home", () => {
     window.location.href = "/";
 });
@@ -62,4 +80,5 @@ socket.on("redirect_to_home", () => {
 // lobby verlaten
 function leaveLobby() {
     socket.emit("leave_lobby", { code, username });
+    triggerGameSync();
 }

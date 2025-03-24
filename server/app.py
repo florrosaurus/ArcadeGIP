@@ -25,7 +25,11 @@ def generate_unique_code():
     while True:
         code = ''.join(random.choices(string.ascii_uppercase, k=6))
         if code not in active_lobbies:
-            active_lobbies[code] = {"players": set(), "choices": {}, "sids": {}}
+            active_lobbies[code] = {
+                "players_in_lobby": set(),
+                "choices": {},
+                "sids": {}
+            }
             return code
 
 # frontend bestanden serveren
@@ -64,7 +68,11 @@ def join_lobby():
     code = data.get("code", "").upper()
 
     if code in active_lobbies:
-        if len(active_lobbies[code]["players"]) >= MAX_PLAYERS:
+        lobby = active_lobbies[code]
+        in_lobby = len(lobby["players_in_lobby"])
+        in_game = len(games_in_progress.get(code, {}).get("players_in_game", []))
+        total = in_lobby + in_game
+        if total >= MAX_PLAYERS:
             return jsonify({"success": False, "message": "lobby is vol"}), 403
         return jsonify({"success": True, "code": code})
 
@@ -77,14 +85,21 @@ def handle_join_lobby(data):
     code, username, sid = data["code"], data["username"], request.sid
 
     if code in active_lobbies:
-        active_lobbies[code]["players"].add(username)  # voeg speler toe
-        active_lobbies[code]["sids"][sid] = username  # link socket-ID aan speler
-        join_room(code)  # voeg toe aan socket room
+        lobby = active_lobbies[code]
+        in_lobby = len(lobby["players_in_lobby"])
+        in_game = len(games_in_progress.get(code, {}).get("players_in_game", []))
+        total = in_lobby + in_game
+        if total > MAX_PLAYERS:
+            socketio.emit("lobby_full", {}, room=sid)
+            return
 
-        socketio.emit("update_lobby", {"players": list(active_lobbies[code]["players"])}, room=code)
+        lobby["players_in_lobby"].add(username)
+        lobby["sids"][sid] = username
+        join_room(code)
+        broadcast_lobby_state(code)
         socketio.emit("game_choice_update", {
-            "choices": active_lobbies[code]["choices"],
-            "totalPlayers": len(active_lobbies[code]["players"])
+            "choices": lobby["choices"],
+            "totalPlayers": len(lobby["players_in_lobby"])
         }, room=code)
 
 @socketio.on("disconnect")
@@ -95,14 +110,10 @@ def handle_disconnect():
         if sid in lobby["sids"]:
             username = lobby["sids"].pop(sid, None)  # verwijder speler-ID
             if username:
-                lobby["players"].discard(username)  # verwijder speler
-                lobby["choices"].pop(username, None)  # verwijder keuze
-
-                # stuur geüpdatete lobby naar overblijvende spelers
-                socketio.emit("update_lobby", {"players": list(lobby["players"])}, room=code)
-
-                # lobby alleen verwijderen als er geen actieve game meer is
-                if not lobby["players"] and code not in games_in_progress:
+                lobby["players_in_lobby"].discard(username)
+                lobby["choices"].pop(username, None)
+                broadcast_lobby_state(code)
+                if not lobby["players_in_lobby"] and code not in games_in_progress:
                     active_lobbies.pop(code, None)
             break
 
@@ -116,7 +127,7 @@ def handle_choose_game(data):
 
         socketio.emit("game_choice_update", {
             "choices": active_lobbies[code]["choices"],
-            "totalPlayers": len(active_lobbies[code]["players"])
+            "totalPlayers": len(active_lobbies[code]["players_in_lobby"])
         }, room=code)
 
         validate_game_start(code)
@@ -124,13 +135,22 @@ def handle_choose_game(data):
 def validate_game_start(code):
     """controleert of een game gestart moet worden"""
     if code in active_lobbies:
-        choices = active_lobbies[code]["choices"]
-        chosen_games = set(choices.values())  # unieke keuzes
-        total_players = len(active_lobbies[code]["players"])
+        lobby = active_lobbies[code]
+        choices = lobby["choices"]
+        chosen_games = set(choices.values())
+        total_players = len(lobby["players_in_lobby"])
 
         if len(chosen_games) == 1 and len(choices) == total_players and total_players > 1:
             game = chosen_games.pop()
-            games_in_progress[code] = {"players_in_game": set(active_lobbies[code]["players"]), "return_votes": set()}
+            games_in_progress[code] = {
+                "players_in_game": set(lobby["players_in_lobby"]),
+                "ready_votes": set(),
+                "rematch_votes": set(),
+                "return_votes": set()
+            }
+            lobby["players_in_lobby"].clear()
+            lobby["choices"] = {}
+            broadcast_lobby_state(code)
             socketio.emit("start_game", {"game": game}, room=code)
 
 @socketio.on("join_game")
@@ -140,14 +160,13 @@ def handle_join_game(data):
 
     if code in games_in_progress:
         game = games_in_progress[code]
-        game.setdefault("players_in_game", set())
-        game.setdefault("ready_votes", set())
         game["players_in_game"].add(username)
         join_room(code)
 
         # stuur spelerslijst naar iedereen
         socketio.emit("update_game_players", {
-            "players": list(game["players_in_game"])
+            "players": list(game["players_in_game"]),
+            "players_in_lobby": len(active_lobbies[code]["players_in_lobby"])
         }, room=code)
 
         # stuur teller update naar iedereen
@@ -156,6 +175,38 @@ def handle_join_game(data):
             "totalPlayers": len(game["players_in_game"])
         }, room=code)
 
+        broadcast_lobby_state(code)
+
+def broadcast_lobby_state(code):
+    if code in active_lobbies:
+        lobby = active_lobbies[code]
+        players_lobby = list(lobby["players_in_lobby"])
+        players_in_game = len(games_in_progress[code]["players_in_game"]) if code in games_in_progress else 0
+
+        socketio.emit("update_lobby", {
+            "players": players_lobby,
+            "players_in_lobby": players_lobby,
+            "players_in_game": players_in_game,
+            "combined": players_in_game + len(players_lobby)
+        }, room=code)
+
+@socketio.on("trigger_sync")
+def handle_trigger_sync(data):
+    """sync spelers in de game als iemand lobby betreedt of verlaat"""
+    code = data["code"]
+
+    if code in games_in_progress:
+        game_info = games_in_progress[code]
+        socketio.emit("update_game_players", {
+            "players": list(game_info["players_in_game"]),
+            "players_in_lobby": len(active_lobbies.get(code, {}).get("players_in_lobby", []))
+        }, room=code)
+
+        socketio.emit("update_ready_votes", {
+            "votes": list(game_info["ready_votes"]),
+            "totalPlayers": len(game_info["players_in_game"])
+        }, room=code)
+        
 @socketio.on("player_ready")
 def handle_player_ready(data):
     code = data["code"]
@@ -168,7 +219,7 @@ def handle_player_ready(data):
 
         socketio.emit("update_ready_votes", {
             "votes": list(game["ready_votes"]),
-            "totalPlayers": len(game["players_in_game"])  # hier voeg je hem toe
+            "totalPlayers": len(game["players_in_game"])
         }, room=code)
 
         if game["ready_votes"] == game["players_in_game"]:
@@ -212,11 +263,13 @@ def handle_return_to_lobby(data):
         game_info["players_in_game"].discard(username)
         game_info["return_votes"].discard(username)
 
-        # stuur update naar overblijvende spelers
-        socketio.emit("update_game_players", {
-            "players": list(game_info["players_in_game"])
-        }, room=code)
+        players_in_lobby = len(active_lobbies.get(code, {}).get("players_in_lobby", []))
 
+        socketio.emit("update_game_players", {
+            "players": list(game_info["players_in_game"]),
+            "players_in_lobby": players_in_lobby
+        }, room=code)
+        # ready teller meegeven
         socketio.emit("update_ready_votes", {
             "votes": list(game_info["ready_votes"]),
             "totalPlayers": len(game_info["players_in_game"])
@@ -230,17 +283,10 @@ def handle_return_to_lobby(data):
             del games_in_progress[code]
 
     if code in active_lobbies:
-        active_lobbies[code]["players"].add(username)
+        lobby = active_lobbies[code]
+        lobby["players_in_lobby"].add(username)
         join_room(code)
-
-        socketio.emit("update_lobby", {
-            "players": list(active_lobbies[code]["players"]),
-            "choices": active_lobbies[code]["choices"]
-        }, room=code)
-
-    if code in active_lobbies and not active_lobbies[code]["players"]:
-        print(f"🗑️ lobby {code} wordt alsnog verwijderd na game")
-        del active_lobbies[code]
+        broadcast_lobby_state(code)
 
 @socketio.on("leave_lobby")
 def handle_leave_lobby(data):
@@ -248,13 +294,12 @@ def handle_leave_lobby(data):
     code, username = data["code"], data["username"]
 
     if code in active_lobbies:
-        active_lobbies[code]["players"].discard(username)
-        active_lobbies[code]["choices"].pop(username, None)
+        lobby = active_lobbies[code]
+        lobby["players_in_lobby"].discard(username)
+        lobby["choices"].pop(username, None)
+        broadcast_lobby_state(code)
 
-        socketio.emit("update_lobby", {"players": list(active_lobbies[code]["players"])}, room=code)
-
-        if not active_lobbies[code]["players"] and code not in games_in_progress:
-            print(f"🗑️ lobby {code} verwijderd (geen spelers, geen game)")
+        if not lobby["players_in_lobby"] and code not in games_in_progress:
             active_lobbies.pop(code, None)
 
     socketio.emit("redirect_to_home", {}, room=request.sid)

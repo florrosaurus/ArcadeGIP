@@ -13,20 +13,23 @@ const readyButton = document.getElementById("readyButton");
 const readyCounter = document.getElementById("readyCounter");
 const rematchButton = document.getElementById("rematchButton");
 const rematchCounter = document.getElementById("rematchCounter");
+const returnButton = document.getElementById("returnButton");
+const warningIcon = document.getElementById("warningIcon");
 
 // snake parameters
 let snakes = {};
-let playerList = []; // globale variabele om spelerslijst op te slaan
-const colors = ["red", "blue", "green", "yellow"]; // kleuren per speler
+let playerList = [];
 let readyVotes = [];
 let totalPlayers = 0;
 let gameStarted = false;
 let countdown = null;
+let countdownValue = null;
 let moveInterval = null;
 let canChangeDirection = true;
 let isDead = false;
 let winner = null;
 
+const colors = ["red", "blue", "green", "yellow"];
 const keyMap = {
     ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right",
     w: "up", s: "down", a: "left", d: "right", z: "up", q: "left"
@@ -46,7 +49,8 @@ function spawnSnakes(players) {
         { x: Math.floor(gridSize / 2), y: padding, direction: "down" },  // boven → beneden
         { x: Math.floor(gridSize / 2), y: gridSize - padding - 1, direction: "up" }  // onder → boven
     ];
-
+    
+    snakes = {};
     players.forEach((player, index) => {
         if (index >= positions.length) return; // max 4
         const { x, y, direction } = positions[index];
@@ -77,14 +81,21 @@ function drawSnakes() {
         });
         ctx.globalAlpha = 1;
     });
-    if (winner) {
+
+    if (countdownValue !== null && !gameStarted) {
+        ctx.fillStyle = "black";
+        ctx.font = "50px Arial";
+        ctx.fillText(countdownValue, canvas.width / 2 - 10, canvas.height / 2);
+    }
+
+    if (winner && !gameStarted) {
         ctx.fillStyle = winner.color;
         ctx.font = "30px Arial";
-        ctx.fillText(`${winner.name} heeft gewonnen!`, canvas.width / 2 - 100, canvas.height / 2);
-    } else if (isDead) {
+        ctx.fillText(`${winner.name} heeft gewonnen!`, canvas.width / 2 - 100, canvas.height / 2 + 50);
+    } else if (isDead && !gameStarted) {
         ctx.fillStyle = "red";
         ctx.font = "30px Arial";
-        ctx.fillText("GAME OVER", canvas.width / 2 - 80, canvas.height / 2);
+        ctx.fillText("GAME OVER", canvas.width / 2 - 80, canvas.height / 2 + 50);
     }
 }
 
@@ -150,44 +161,56 @@ function checkForWinner() {
         const last = alive[0];
         winner = { name: last, color: snakes[last].color };
         clearInterval(moveInterval);
+        gameStarted = false;
         drawSnakes();
         rematchButton.style.display = "inline-block";
-        rematchCounter.style.display = "inline-block";
         rematchButton.disabled = false;
-        rematchCounter.innerText = `(0/${playerList.length})`;
+        returnButton.disabled = false;
 
-        document.getElementById("returnButton").disabled = false; // unlock hier
+        // FIX: teller resetten zodra rematch verschijnt
+        rematchCounter.innerText = `(0/${playerList.length})`;
     }
 }
 
-// countdown starten + snakes opnieuw spawnen
+readyButton.addEventListener("click", () => {
+    socket.emit("player_ready", { code, username });
+    readyButton.disabled = true;
+});
+rematchButton.addEventListener("click", () => {
+    socket.emit("player_rematch_vote", { code, username });
+    rematchButton.disabled = true;
+});
+returnButton.addEventListener("click", () => {
+    socket.emit("return_to_lobby", { code, username });
+});
+
+socket.on("update_snake_direction", data => {
+    if (snakes[data.username]) {
+        snakes[data.username].direction = data.direction;
+    }
+});
+
+// FIX: hide both ready/rematch before countdown starts
 socket.on("start_countdown", () => {
-    rematchButton.style.display = "none";
-    rematchCounter.style.display = "none";
+    if (playerList.length < 2) return resetToLobbyState();
     readyButton.style.display = "none";
-    readyButton.disabled = false;
-
-    rematchCounter.innerText = `(0/${playerList.length})`; // teller reset
-
+    rematchButton.style.display = "none";
+    returnButton.disabled = true;
     winner = null;
     isDead = false;
     gameStarted = false;
     clearInterval(moveInterval);
-
-    spawnSnakes(playerList); // spawn nieuwe snakes
-
+    spawnSnakes(playerList);
     let counter = 3;
+    countdownValue = counter;
     countdown = setInterval(() => {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        drawSnakes(); // countdown overlay
-        ctx.fillStyle = "black";
-        ctx.font = "50px Arial";
-        ctx.fillText(counter, canvas.width / 2 - 10, canvas.height / 2);
+        countdownValue = counter;
+        drawSnakes();
         counter--;
         if (counter < 0) {
             clearInterval(countdown);
+            countdownValue = null;
             gameStarted = true;
-            document.getElementById("returnButton").disabled = true; // disable hier!
             moveInterval = setInterval(gameLoop, 200);
         }
     }, 1000);
@@ -200,62 +223,22 @@ function gameLoop() {
     drawSnakes();
 }
 
-// ready knop
-readyButton.addEventListener("click", () => {
-    socket.emit("player_ready", { code, username });
-    readyButton.disabled = true;
-});
-
-// rematch knop
-rematchButton.addEventListener("click", () => {
-    socket.emit("player_rematch_vote", { code, username });
-    rematchButton.disabled = true;
-});
-
-// snake richting sync
-socket.on("update_snake_direction", data => {
-    if (snakes[data.username]) {
-        snakes[data.username].direction = data.direction;
-    }
-});
-
-// ready votes teller
-socket.on("update_ready_votes", data => {
-    readyVotes = data.votes;
-    totalPlayers = data.totalPlayers;
-    readyCounter.innerText = `(${readyVotes.length}/${totalPlayers})`;
-});
-
-// rematch votes teller
-socket.on("update_rematch_votes", data => {
-    rematchCounter.innerText = `(${data.votes.length}/${data.totalPlayers})`;
-});
-
-// terug naar lobby knop
-socket.on("return_lobby", data => {
-    window.location.assign(`/lobby.html?code=${data.code}`);
-});
-
-document.getElementById("returnButton").addEventListener("click", () => {
-    socket.emit("return_to_lobby", { code, username });
-});
-
-// disconnect log
-socket.on("disconnect", reason => {
-    console.warn(`⚡ Verbinding verbroken: ${reason}`);
-});
-
-// spelers + warning updates
 socket.on("update_game_players", data => {
-    if (!data.players || data.players.length === 0) return;
     playerList = data.players;
-    document.getElementById("players").innerText = data.players.map(p => p === username ? `${p} (you)` : p).join(", ") + ` (${data.players.length})`;
-    updateGameSize(data.players.length);
-    spawnSnakes(data.players);
+    const inLobby = data.players_in_lobby;
 
-    // toon waarschuwing
-    let warningIcon = document.getElementById("warningIcon");
-    if (data.players.length < 2) {
+    document.getElementById("players").innerText = playerList.map(p => p === username ? `${p} (you)` : p).join(", ");
+    document.getElementById("playersInGameCount").innerText = `(${playerList.length + inLobby}/4 total)`;
+    document.getElementById("inLobbyOnly").innerText = `${inLobby} in lobby`;
+
+    if (playerList.length < 2 && (gameStarted || countdown !== null)) {
+        resetToLobbyState();
+    }
+
+    updateGameSize(playerList.length);
+    spawnSnakes(playerList);
+
+    if (playerList.length < 2) {
         warningIcon.style.display = "inline";
         warningIcon.innerText = "⚠️";
         warningIcon.title = "te weinig spelers voor snake";
@@ -263,16 +246,30 @@ socket.on("update_game_players", data => {
         // lock knoppen
         readyButton.disabled = true;
         rematchButton.disabled = true;
+        returnButton.disabled = false;
     } else {
         warningIcon.style.display = "none";
         // unlock knoppen
-        if (!gameStarted && !winner) {
+        if (!gameStarted && !winner && countdown === null) {
             readyButton.disabled = false;
             rematchButton.disabled = false;
+            returnButton.disabled = false;
         }
     }
+
+    if (!gameStarted) drawSnakes();
 });
 
+socket.on("update_ready_votes", data => {
+    readyVotes = data.votes;
+    totalPlayers = data.totalPlayers;
+    readyCounter.innerText = `(${readyVotes.length}/${totalPlayers})`;
+});
+
+// FIX: rematch counter nu altijd direct correct updaten
+socket.on("update_rematch_votes", data => {
+    rematchCounter.innerText = `(${data.votes.length}/${data.totalPlayers})`;
+});
 
 function updateGameSize(playerCount) {
     canvasSize = Math.min(300 + (playerCount - 1) * 100, 600); // schalen op basis van spelers
@@ -280,17 +277,25 @@ function updateGameSize(playerCount) {
     canvas.height = canvasSize;
 }
 
-// terug naar lobby
+function resetToLobbyState() {
+    clearInterval(countdown);
+    clearInterval(moveInterval);
+    countdownValue = null;
+    gameStarted = false;
+    isDead = false;
+    winner = null;
+    readyButton.style.display = "inline-block";
+    rematchButton.style.display = "none";
+    readyButton.disabled = false;
+    rematchButton.disabled = false;
+    returnButton.disabled = false;
+    drawSnakes();
+}
+
 socket.on("return_lobby", data => {
     window.location.assign(`/lobby.html?code=${data.code}`);
 });
 
-// lobby knop
-document.getElementById("returnButton").addEventListener("click", () => {
-    socket.emit("return_to_lobby", { code, username });
-});
-
-// debugging disconnects
 socket.on("disconnect", reason => {
     console.warn(`⚡ Verbinding verbroken: ${reason}`);
 });
