@@ -32,6 +32,28 @@ socket.on("update_lobby", data => {
     document.getElementById("players").innerText = data.players.map(p => p === username ? `${p} (you)` : p).join(", ");
     document.getElementById("combinedCount").innerText = `${combined}/4 total`;
     document.getElementById("inLobbyOnly").innerText = `${playersInGame} in game`;
+
+    const snakeBtn = document.querySelector('button[onclick="chooseGame(\'snake\')"]');
+    const pongBtn = document.querySelector('button[onclick="chooseGame(\'pong\')"]');
+    const gameBusyMessage = document.getElementById("gameBusyMessage");
+
+    if (playersInGame > 0 && data.current_game) {
+        // game is bezig, lock knoppen
+        snakeBtn.disabled = true;
+        pongBtn.disabled = true;
+
+        // bericht tonen
+        gameBusyMessage.innerText = `${data.current_game.charAt(0).toUpperCase() + data.current_game.slice(1)} is bezig...`;
+        gameBusyMessage.style.display = "block";
+    } else {
+        // geen game bezig, unlock knoppen
+        snakeBtn.disabled = false;
+        pongBtn.disabled = false;
+
+        // bericht verbergen
+        gameBusyMessage.innerText = "";
+        gameBusyMessage.style.display = "none";
+    }
 });
 
 // ontvangt updates vanuit de game-room (game-side sync)

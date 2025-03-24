@@ -146,7 +146,8 @@ def validate_game_start(code):
                 "players_in_game": set(lobby["players_in_lobby"]),
                 "ready_votes": set(),
                 "rematch_votes": set(),
-                "return_votes": set()
+                "return_votes": set(),
+                "current_game": game  # gekozen game opslaan
             }
             lobby["players_in_lobby"].clear()
             lobby["choices"] = {}
@@ -182,12 +183,20 @@ def broadcast_lobby_state(code):
         lobby = active_lobbies[code]
         players_lobby = list(lobby["players_in_lobby"])
         players_in_game = len(games_in_progress[code]["players_in_game"]) if code in games_in_progress else 0
+        current_game = None
+
+        # haal gamenaam uit games_in_progress als bezig
+        if code in games_in_progress and players_in_game > 0:
+            current_game = games_in_progress[code].get("current_game", "game")
+        else:
+            current_game = None
 
         socketio.emit("update_lobby", {
             "players": players_lobby,
             "players_in_lobby": players_lobby,
             "players_in_game": players_in_game,
-            "combined": players_in_game + len(players_lobby)
+            "combined": players_in_game + len(players_lobby),
+            "current_game": current_game,
         }, room=code)
 
 @socketio.on("trigger_sync")
@@ -206,7 +215,7 @@ def handle_trigger_sync(data):
             "votes": list(game_info["ready_votes"]),
             "totalPlayers": len(game_info["players_in_game"])
         }, room=code)
-        
+
 @socketio.on("player_ready")
 def handle_player_ready(data):
     code = data["code"]
