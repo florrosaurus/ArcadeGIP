@@ -262,6 +262,20 @@ def handle_snake_move(data):
     if code in games_in_progress:
         socketio.emit("update_snake_direction", {"username": username, "direction": direction}, room=code)
 
+@socketio.on("pong_move")
+def handle_pong_move(data):
+    """ontvang paddle-positie van speler en broadcast naar anderen"""
+    code = data["code"]
+    username = data["username"]
+    x = data["x"]
+    y = data["y"]
+
+    if code in games_in_progress:
+        # Stuur enkel de gewijzigde paddle info door
+        socketio.emit("update_paddles", {
+            username: {"x": x, "y": y}
+        }, room=code)
+
 @socketio.on("return_to_lobby")
 def handle_return_to_lobby(data):
     """stuurt individuele speler terug naar lobby"""
