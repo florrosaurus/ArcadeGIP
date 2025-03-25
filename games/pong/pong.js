@@ -30,6 +30,10 @@ const paddleSize = 80;
 let paddleSpeed = 5;
 let direction = 0;
 
+let ball = null;
+let ballInterval = null;
+let isHost = false;
+
 const keyMap = {
     ArrowUp: -1, ArrowDown: 1,
     z: -1, s: 1,
@@ -42,6 +46,8 @@ socket.emit("join_game", { code, username });
 
 socket.on("update_game_players", data => {
     playerList = data.players;
+    isHost = (playerList[0] === username); // HOST bepaalt balbeweging
+
     const inLobby = data.players_in_lobby;
 
     document.getElementById("players").innerText = playerList.map(p => p === username ? `${p} (you)` : p).join(", ");
@@ -81,6 +87,7 @@ socket.on("update_rematch_votes", data => {
 socket.on("start_countdown", () => {
     if (![2, 4].includes(playerList.length)) return resetToLobbyState();
 
+    setupPaddles();
     readyButton.style.display = "none";
     rematchButton.style.display = "none";
     returnButton.disabled = true;
@@ -92,12 +99,11 @@ socket.on("start_countdown", () => {
     countdownValue = counter;
     countdown = setInterval(() => {
         countdownValue = counter;
-        drawWaitingState();
+        drawPaddles();
         counter--;
         if (counter < 0) {
             clearInterval(countdown);
             countdownValue = null;
-            gameStarted = true;
             startGame();
         }
     }, 1000);
@@ -127,15 +133,21 @@ socket.on("disconnect", reason => {
 
 // canvas
 function updateGameSize(playerCount) {
-    canvasSize = Math.min(300 + (playerCount - 1) * 100, 600);
-    canvas.width = canvasSize;
-    canvas.height = canvasSize;
+    if (playerCount === 2) {
+        canvas.width = 700;
+        canvas.height = 400;
+    } else {
+        canvas.width = 600;
+        canvas.height = 600;
+    }
 }
 
 function resetToLobbyState() {
     clearInterval(countdown);
+    clearInterval(ballInterval);
     countdownValue = null;
     gameStarted = false;
+    ball = null;
     readyButton.style.display = "inline-block";
     rematchButton.style.display = "none";
     readyButton.disabled = false;
@@ -160,14 +172,25 @@ function drawWaitingState() {
 // spel starten
 function startGame() {
     setupPaddles();
+    setupBall();
     gameStarted = true;
+    returnButton.disabled = true;
     rematchButton.style.display = "inline-block";
     rematchButton.disabled = false;
-    returnButton.disabled = false;
     rematchCounter.innerText = `(0/${playerList.length})`;
+
+    if (isHost) {
+        ballInterval = setInterval(() => {
+            updateBall();
+            socket.emit("ball_update", {
+                code,
+                x: ball.x,
+                y: ball.y
+            });
+        }, 1000 / 60);
+    }
 }
 
-// paddles instellen
 function setupPaddles() {
     const midY = canvas.height / 2;
     const midX = canvas.width / 2;
@@ -202,12 +225,68 @@ function drawPaddles() {
         ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height);
     });
 
+    if (ball) {
+        ctx.beginPath();
+        ctx.arc(ball.x, ball.y, ball.radius, 0, 2 * Math.PI);
+        ctx.fillStyle = "white";
+        ctx.fill();
+    }
+
     if (countdownValue !== null) {
         ctx.fillStyle = "white";
         ctx.font = "40px Arial";
         ctx.fillText(countdownValue, canvas.width / 2, canvas.height / 2);
     }
 }
+
+function setupBall() {
+    ball = {
+        x: canvas.width / 2,
+        y: canvas.height / 2,
+        vx: 4 * (Math.random() > 0.5 ? 1 : -1),
+        vy: 3 * (Math.random() > 0.5 ? 1 : -1),
+        radius: 8
+    };
+}
+
+function updateBall() {
+    if (!ball) return;
+
+    ball.x += ball.vx;
+    ball.y += ball.vy;
+
+    if (ball.y <= 0 || ball.y >= canvas.height) ball.vy *= -1;
+    if (ball.x <= 0 || ball.x >= canvas.width) ball.vx *= -1;
+
+    Object.values(paddles).forEach(p => {
+        if (!p.alive) return;
+        if (
+            ball.x + ball.radius > p.x &&
+            ball.x - ball.radius < p.x + p.width &&
+            ball.y + ball.radius > p.y &&
+            ball.y - ball.radius < p.y + p.height
+        ) {
+            if (p.side === 'left' || p.side === 'right') {
+                ball.vx *= -1.05;
+            } else {
+                ball.vy *= -1.05;
+            }
+
+            ball.vx = Math.max(-10, Math.min(10, ball.vx));
+            ball.vy = Math.max(-10, Math.min(10, ball.vy));
+        }
+    });
+
+    drawPaddles();
+}
+
+socket.on("sync_ball", data => {
+    if (!isHost && ball) {
+        ball.x = data.x;
+        ball.y = data.y;
+        drawPaddles();
+    }
+});
 
 function getColor(index) {
     return ['red', 'blue', 'green', 'yellow'][index] || 'white';
@@ -251,7 +330,7 @@ window.addEventListener("keydown", e => {
     }
 });
 
-window.addEventListener("keyup", e => {
+window.addEventListener("keyup", () => {
     direction = 0;
 });
 

@@ -333,6 +333,14 @@ def handle_food_update(data):
     food_items = data["foodItems"]
     socketio.emit("sync_food", {"foodItems": food_items}, room=code)
 
+@socketio.on("ball_update")
+def handle_ball_update(data):
+    """Ontvang balpositie en broadcast naar alle clients"""
+    code = data["code"]
+    x = data["x"]
+    y = data["y"]
+    socketio.emit("sync_ball", {"x": x, "y": y}, room=code)
+
 # start server
 if __name__ == "__main__":
     socketio.run(app, host="127.0.0.1", port=51234, debug=True)
