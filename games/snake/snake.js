@@ -70,7 +70,6 @@ function spawnSnakes(players) {
     drawSnakes();
     scores = {};
     players.forEach(p => scores[p] = 0);
-    spawnFood();
     updateScoreboard();
 }
 
@@ -214,7 +213,6 @@ socket.on("update_snake_direction", data => {
     }
 });
 
-// FIX: hide both ready/rematch before countdown starts
 socket.on("start_countdown", () => {
     if (playerList.length < 2) return resetToLobbyState();
     readyButton.style.display = "none";
@@ -224,14 +222,21 @@ socket.on("start_countdown", () => {
     isDead = false;
     gameStarted = false;
     clearInterval(moveInterval);
+    clearInterval(countdown);
+
     spawnSnakes(playerList);
+
+    scores = {};
+    playerList.forEach(p => scores[p] = 0);
+    updateScoreboard();
+    
+    // pas op start countdown
+    spawnFood();
+
     let counter = 3;
     countdownValue = counter;
     countdown = setInterval(() => {
         countdownValue = counter;
-        scores = {};
-    playerList.forEach(p => scores[p] = 0);
-    updateScoreboard();
         drawSnakes();
         counter--;
         if (counter < 0) {
