@@ -313,6 +313,12 @@ def handle_leave_lobby(data):
 
     socketio.emit("redirect_to_home", {}, room=request.sid)
 
+@socketio.on("food_update")
+def handle_food_update(data):
+    code = data["code"]
+    food_items = data["foodItems"]
+    socketio.emit("sync_food", {"foodItems": food_items}, room=code)
+
 # start server
 if __name__ == "__main__":
     socketio.run(app, host="127.0.0.1", port=51234, debug=True)

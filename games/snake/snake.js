@@ -28,6 +28,8 @@ let moveInterval = null;
 let canChangeDirection = true;
 let isDead = false;
 let winner = null;
+let foodItems = [];
+let scores = {};
 
 const colors = ["red", "blue", "green", "yellow"];
 const keyMap = {
@@ -66,11 +68,17 @@ function spawnSnakes(players) {
         };
     });
     drawSnakes();
+    scores = {};
+    players.forEach(p => scores[p] = 0);
+    spawnFood();
+    updateScoreboard();
 }
 
 // canvas tekenen
 function drawSnakes() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawFood();
+
     Object.keys(snakes).forEach(player => {
         const snake = snakes[player];
         if (!snake.alive) return;
@@ -147,8 +155,24 @@ function moveSnake(player) {
             }
         }
     }
-    snake.body.unshift(head);
-    snake.body.pop();
+    let ateFood = false;
+    foodItems = foodItems.filter(food => {
+        if (food.x === head.x && food.y === head.y) {
+            ateFood = true;
+            scores[player]++;
+            return false;
+        }
+        return true;
+    });
+    
+    if (ateFood) {
+        spawnSingleFood();
+        updateScoreboard();
+    } else {
+        snake.body.pop();
+    }
+    
+    snake.body.unshift(head);    
 }
 
 // dood gaan
@@ -205,6 +229,9 @@ socket.on("start_countdown", () => {
     countdownValue = counter;
     countdown = setInterval(() => {
         countdownValue = counter;
+        scores = {};
+    playerList.forEach(p => scores[p] = 0);
+    updateScoreboard();
         drawSnakes();
         counter--;
         if (counter < 0) {
@@ -266,13 +293,17 @@ socket.on("update_ready_votes", data => {
     readyCounter.innerText = `(${readyVotes.length}/${totalPlayers})`;
 });
 
-// FIX: rematch counter nu altijd direct correct updaten
 socket.on("update_rematch_votes", data => {
     rematchCounter.innerText = `(${data.votes.length}/${data.totalPlayers})`;
 });
 
+socket.on("sync_food", data => {
+    foodItems = data.foodItems;
+    drawSnakes();
+});
+
 function updateGameSize(playerCount) {
-    canvasSize = Math.min(300 + (playerCount - 1) * 100, 600); // schalen op basis van spelers
+    canvasSize = Math.min(300 + (playerCount - 1) * 100, 600);
     canvas.width = canvasSize;
     canvas.height = canvasSize;
 }
@@ -290,6 +321,66 @@ function resetToLobbyState() {
     rematchButton.disabled = false;
     returnButton.disabled = false;
     drawSnakes();
+}
+
+// voedsel spawnen, niet op snakes
+function spawnFood() {
+    foodItems = [];
+    const gridSize = canvas.width / 20;
+
+    while(foodItems.length < playerList.length) {
+        const food = {
+            x: Math.floor(Math.random() * gridSize),
+            y: Math.floor(Math.random() * gridSize)
+        };
+        if (!foodInSnake(food)) foodItems.push(food);
+    }
+    socket.emit("food_update", {code, foodItems});
+}
+
+// check of voedsel in snake
+function foodInSnake(food) {
+    return Object.values(snakes).some(snake => 
+        snake.body.some(seg => seg.x === food.x && seg.y === food.y));
+}
+
+// voedsel tekenen
+function drawFood() {
+    ctx.fillStyle = "orange";
+    foodItems.forEach(food => ctx.fillRect(food.x * 20, food.y * 20, 20, 20));
+}
+
+// nieuw voedselstuk spawnen
+function spawnSingleFood() {
+    const gridSize = canvas.width / 20;
+    let newFood;
+
+    do {
+        newFood = {
+            x: Math.floor(Math.random() * gridSize),
+            y: Math.floor(Math.random() * gridSize)
+        };
+    } while(foodInSnake(newFood) || foodOnFood(newFood));
+
+    foodItems.push(newFood);
+    socket.emit("food_update", {code, foodItems});
+}
+
+// check voedsel collision met bestaande voedselstukken
+function foodOnFood(food) {
+    return foodItems.some(f => f.x === food.x && f.y === food.y);
+}
+
+// scorebord
+function updateScoreboard() {
+    const scoresUl = document.getElementById("scores");
+    scoresUl.innerHTML = "";
+    playerList.forEach(player => {
+        const li = document.createElement("li");
+        li.style.color = snakes[player].color;
+        li.innerText = `${player}: ${scores[player] || 0}`;
+        scoresUl.appendChild(li);
+    });
 }
 
 socket.on("return_lobby", data => {
