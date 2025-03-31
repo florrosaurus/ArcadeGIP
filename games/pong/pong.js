@@ -34,6 +34,10 @@ let ball = null;
 let ballInterval = null;
 let isHost = false;
 
+let scores = {};
+let winner = null;
+let isDead = false;
+
 const keyMap = {
     ArrowUp: -1, ArrowDown: 1,
     z: -1, s: 1,
@@ -88,6 +92,7 @@ socket.on("start_countdown", () => {
     if (![2, 4].includes(playerList.length)) return resetToLobbyState();
 
     setupPaddles();
+    setupBall();
     readyButton.style.display = "none";
     rematchButton.style.display = "none";
     returnButton.disabled = true;
@@ -136,9 +141,49 @@ function updateGameSize(playerCount) {
     if (playerCount === 2) {
         canvas.width = 700;
         canvas.height = 400;
+        paddleSpeed = 5;
     } else {
         canvas.width = 600;
         canvas.height = 600;
+        paddleSpeed = 6.5;
+    }
+}
+
+function handleElimination(side) {
+    const target = Object.entries(paddles).find(([_, p]) => p.side === side);
+    if (!target) return;
+    const [name, paddle] = target;
+
+    paddle.alive = false;
+
+    const aliveCount = Object.values(paddles).filter(p => p.alive).length;
+    if (aliveCount === 1) {
+        const lastPlayer = Object.entries(paddles).find(([_, p]) => p.alive)?.[0];
+        if (lastPlayer) {
+            scores[lastPlayer] = (scores[lastPlayer] || 0) + 1;
+            winner = {
+                name: lastPlayer,
+                color: paddles[lastPlayer].color
+            };
+        }
+        isDead = true;
+        gameStarted = false;
+        clearInterval(ballInterval);
+        drawPaddles();
+
+        if (isHost) {
+            socket.emit("winner_update", {
+                code,
+                winner: winner.name,
+                color: winner.color,
+                scores
+            });
+        }
+
+        rematchButton.style.display = "inline-block";
+        rematchButton.disabled = false;
+        returnButton.disabled = false;
+        rematchCounter.innerText = `(0/${playerList.length})`;
     }
 }
 
@@ -148,6 +193,9 @@ function resetToLobbyState() {
     countdownValue = null;
     gameStarted = false;
     ball = null;
+    isDead = false;
+    winner = null;
+
     readyButton.style.display = "inline-block";
     rematchButton.style.display = "none";
     readyButton.disabled = false;
@@ -163,9 +211,11 @@ function drawWaitingState() {
     ctx.textAlign = "center";
 
     if (countdownValue !== null) {
+        ctx.beginPath();
+        ctx.arc(canvas.width / 2, canvas.height / 2, ball?.radius || 8, 0, 2 * Math.PI);
+        ctx.fillStyle = "white";
+        ctx.fill();
         ctx.fillText(countdownValue, canvas.width / 2, canvas.height / 2);
-    } else if (!gameStarted) {
-        pass
     }
 }
 
@@ -174,9 +224,13 @@ function startGame() {
     setupPaddles();
     setupBall();
     gameStarted = true;
+    isDead = false;
+    winner = null;
+
+    playerList.forEach(p => scores[p] ??= 0);
+
+    rematchButton.style.display = "none";
     returnButton.disabled = true;
-    rematchButton.style.display = "inline-block";
-    rematchButton.disabled = false;
     rematchCounter.innerText = `(0/${playerList.length})`;
 
     if (isHost) {
@@ -223,6 +277,19 @@ function drawPaddles() {
         if (!paddle.alive) return;
         ctx.fillStyle = paddle.color;
         ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height);
+
+        ctx.fillStyle = "white";
+        ctx.font = "12px Arial";
+        ctx.textAlign = "center";
+        if (paddle.side === 'left') {
+            ctx.fillText(name, paddle.x + 20, paddle.y + paddle.height / 2);
+        } else if (paddle.side === 'right') {
+            ctx.fillText(name, paddle.x - 20, paddle.y + paddle.height / 2);
+        } else if (paddle.side === 'top') {
+            ctx.fillText(name, paddle.x + paddle.width / 2, paddle.y + 20);
+        } else {
+            ctx.fillText(name, paddle.x + paddle.width / 2, paddle.y - 10);
+        }
     });
 
     if (ball) {
@@ -237,27 +304,83 @@ function drawPaddles() {
         ctx.font = "40px Arial";
         ctx.fillText(countdownValue, canvas.width / 2, canvas.height / 2);
     }
+
+    if (winner) {
+        ctx.fillStyle = winner.color;
+        ctx.font = "30px Arial";
+        ctx.fillText(`${winner.name} heeft gewonnen!`, canvas.width / 2, canvas.height / 2 + 40);
+    } else if (isDead) {
+        ctx.fillStyle = "red";
+        ctx.font = "30px Arial";
+        ctx.fillText(`GAME OVER`, canvas.width / 2, canvas.height / 2 + 40);
+    }
+
+    drawScoreboard();
 }
 
 function setupBall() {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 5;
     ball = {
         x: canvas.width / 2,
         y: canvas.height / 2,
-        vx: 4 * (Math.random() > 0.5 ? 1 : -1),
-        vy: 3 * (Math.random() > 0.5 ? 1 : -1),
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
         radius: 8
     };
 }
 
 function updateBall() {
-    if (!ball) return;
+    if (!ball || !gameStarted) return;
 
     ball.x += ball.vx;
     ball.y += ball.vy;
 
-    if (ball.y <= 0 || ball.y >= canvas.height) ball.vy *= -1;
-    if (ball.x <= 0 || ball.x >= canvas.width) ball.vx *= -1;
+    if (playerList.length === 2) {
+        if (ball.x < 0) return handleKill('left');
+        if (ball.x > canvas.width) return handleKill('right');
+        if (ball.y <= 0 || ball.y >= canvas.height) ball.vy *= -1;
+    }
 
+    if (playerList.length === 4) {
+        const killZones = {
+            left: ball.x < 0,
+            right: ball.x > canvas.width,
+            top: ball.y < 0,
+            bottom: ball.y > canvas.height
+        };
+
+        for (const [side, condition] of Object.entries(killZones)) {
+            if (condition) {
+                const target = Object.entries(paddles).find(([_, p]) => p.side === side);
+                if (target) {
+                    const [name, paddle] = target;
+                    if (paddle.alive) {
+                        handleElimination(side);
+                    }
+
+                    // reflecteer en duw bal buiten muur
+                    if (side === 'left') {
+                        ball.vx *= -1;
+                        ball.x = ball.radius;
+                    } else if (side === 'right') {
+                        ball.vx *= -1;
+                        ball.x = canvas.width - ball.radius;
+                    } else if (side === 'top') {
+                        ball.vy *= -1;
+                        ball.y = ball.radius;
+                    } else if (side === 'bottom') {
+                        ball.vy *= -1;
+                        ball.y = canvas.height - ball.radius;
+                    }
+
+                    break;
+                }
+            }
+        }
+    }
+
+    // paddle collision
     Object.values(paddles).forEach(p => {
         if (!p.alive) return;
         if (
@@ -272,12 +395,58 @@ function updateBall() {
                 ball.vy *= -1.05;
             }
 
+            // clamp snelheid
             ball.vx = Math.max(-10, Math.min(10, ball.vx));
             ball.vy = Math.max(-10, Math.min(10, ball.vy));
         }
     });
 
     drawPaddles();
+}
+
+function handleKill(side) {
+    const loser = Object.entries(paddles).find(([_, p]) => p.side === side)?.[0];
+    const winnerName = playerList.find(p => p !== loser);
+
+    if (winnerName) {
+        scores[winnerName]++;
+        winner = {
+            name: winnerName,
+            color: paddles[winnerName].color
+        };
+    }
+
+    isDead = true;
+    gameStarted = false;
+    clearInterval(ballInterval);
+    drawPaddles();
+
+    if (isHost) {
+        socket.emit("winner_update", {
+            code,
+            winner: winnerName,
+            color: paddles[winnerName]?.color,
+            scores
+        });
+    }
+
+    rematchButton.style.display = "inline-block";
+    rematchButton.disabled = false;
+    returnButton.disabled = false;
+    rematchCounter.innerText = `(0/${playerList.length})`;
+}
+
+function drawScoreboard() {
+    ctx.fillStyle = "white";
+    ctx.font = "16px Arial";
+    ctx.textAlign = "left";
+
+    let y = 20;
+    playerList.forEach(p => {
+        ctx.fillStyle = paddles[p].color;
+        ctx.fillText(`${p}: ${scores[p] || 0}`, 10, y);
+        y += 20;
+    });
 }
 
 socket.on("sync_ball", data => {
@@ -348,4 +517,22 @@ socket.on("update_paddles", data => {
         }
     });
     if (gameStarted) drawPaddles();
+});
+
+socket.on("winner_update", data => {
+    if (!isHost) {
+        winner = {
+            name: data.winner,
+            color: data.color
+        };
+        scores = data.scores;
+        isDead = true;
+        gameStarted = false;
+        clearInterval(ballInterval);
+        drawPaddles();
+        rematchButton.style.display = "inline-block";
+        rematchButton.disabled = false;
+        returnButton.disabled = false;
+        rematchCounter.innerText = `(0/${playerList.length})`;
+    }
 });

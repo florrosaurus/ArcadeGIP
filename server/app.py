@@ -341,6 +341,20 @@ def handle_ball_update(data):
     y = data["y"]
     socketio.emit("sync_ball", {"x": x, "y": y}, room=code)
 
+@socketio.on("winner_update")
+def handle_winner_update(data):
+    """Host stuurt winnaar + scores naar alle andere clients"""
+    code = data["code"]
+    winner = data["winner"]
+    color = data["color"]
+    scores = data.get("scores", {})
+
+    socketio.emit("winner_update", {
+        "winner": winner,
+        "color": color,
+        "scores": scores
+    }, room=code)
+
 # start server
 if __name__ == "__main__":
     socketio.run(app, host="127.0.0.1", port=51234, debug=True)
