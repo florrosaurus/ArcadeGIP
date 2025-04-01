@@ -52,14 +52,15 @@ socket.emit("trigger_sync", { code, game: currentGameName });
 
 socket.on("update_game_players", data => {
     playerList = data.players;
-    isHost = (playerList[0] === username); // HOST bepaalt balbeweging
-
-    const inLobby = data.players_in_lobby;
+    isHost = playerList[0] === username;
+    const inLobby = data.players_in_lobby || 0;
+    const inOtherGames = data.players_in_other_games || 0;
+    const combined = data.total || (playerList.length + inLobby + inOtherGames);
 
     document.getElementById("players").innerText = playerList.map(p => p === username ? `${p} (you)` : p).join(", ");
-    document.getElementById("playersInGameCount").innerText = `(${playerList.length + inLobby}/4 total)`;
+    document.getElementById("playersInGameCount").innerText = `(${combined}/4 total)`;
     document.getElementById("inLobbyOnly").innerText = `${inLobby} in lobby`;
-    document.getElementById("inOtherGames").innerText = `${data.players_in_other_games || 0} in other games`;
+    document.getElementById("inOtherGames").innerText = `${inOtherGames} in other games`;
     
     updateGameSize(playerList.length);
 
@@ -103,6 +104,8 @@ socket.on("start_countdown", data => {
     rematchButton.style.display = "none";
     returnButton.disabled = true;
     gameStarted = false;
+    winner = null;
+    isDead = false;
 
     clearInterval(countdown);
 

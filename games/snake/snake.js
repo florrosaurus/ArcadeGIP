@@ -30,6 +30,7 @@ let isDead = false;
 let winner = null;
 let foodItems = [];
 let scores = {};
+let amIFoodMaster = false;
 
 const colors = ["red", "blue", "green", "yellow"];
 const keyMap = {
@@ -266,13 +267,17 @@ function gameLoop() {
 
 socket.on("update_game_players", data => {
     playerList = data.players;
-    const inLobby = data.players_in_lobby;
+    amIFoodMaster = playerList[0] === username;
+
+    const inLobby = data.players_in_lobby || 0;
+    const inOtherGames = data.players_in_other_games || 0;
+    const combined = data.total || (playerList.length + inLobby + inOtherGames);
 
     document.getElementById("players").innerText = playerList.map(p => p === username ? `${p} (you)` : p).join(", ");
-    document.getElementById("playersInGameCount").innerText = `(${playerList.length + inLobby}/4 total)`;
+    document.getElementById("playersInGameCount").innerText = `(${combined}/4 total)`;
     document.getElementById("inLobbyOnly").innerText = `${inLobby} in lobby`;
-    document.getElementById("inOtherGames").innerText = `${data.players_in_other_games || 0} in other games`;
-    
+    document.getElementById("inOtherGames").innerText = `${inOtherGames} in other games`;
+
     if (playerList.length < 2 && (gameStarted || countdown !== null)) {
         resetToLobbyState();
     }
@@ -280,6 +285,8 @@ socket.on("update_game_players", data => {
     updateGameSize(playerList.length);
     spawnSnakes(playerList);
 
+    if (amIFoodMaster && foodItems.length === 0) spawnFood(); // alleen speler 1 spawnt voedsel
+    
     if (playerList.length < 2) {
         warningIcon.style.display = "inline";
         warningIcon.innerText = "⚠️";
@@ -369,6 +376,7 @@ function drawFood() {
 
 // nieuw voedselstuk spawnen
 function spawnSingleFood() {
+    if (!amIFoodMaster) return;
     const gridSize = canvas.width / 20;
     let newFood;
 

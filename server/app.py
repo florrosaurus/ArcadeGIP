@@ -125,9 +125,15 @@ def handle_choose_game(data):
     if code in active_lobbies:
         active_lobbies[code]["choices"][username] = game  # sla keuze op
 
+        players_per_game = {
+            game: list(info.get("players_in_game", []))
+            for game, info in games_in_progress.get(code, {}).items()
+        }
+
         socketio.emit("game_choice_update", {
             "choices": active_lobbies[code]["choices"],
-            "totalPlayers": len(active_lobbies[code]["players_in_lobby"])
+            "totalPlayers": len(active_lobbies[code]["players_in_lobby"]),
+            "playersInGame": players_per_game
         }, room=code)
 
         validate_game_start(code)
@@ -142,7 +148,17 @@ def validate_game_start(code):
 
         if len(chosen_games) == 1 and len(choices) == total_players and total_players > 1:
             game = chosen_games.pop()
-            games_in_progress.setdefault(code, {})  # maak dict per code
+
+            # check of game al bezig is in deze lobby
+            if game in games_in_progress.get(code, {}):
+                socketio.emit("game_already_running", {
+                    "game": game,
+                    "message": f"{game} is al bezig"
+                }, room=code)
+                return
+
+            # start game
+            games_in_progress.setdefault(code, {})
             games_in_progress[code][game] = {
                 "players_in_game": set(lobby["players_in_lobby"]),
                 "ready_votes": set(),
@@ -156,27 +172,45 @@ def validate_game_start(code):
 
 @socketio.on("join_game")
 def handle_join_game(data):
-    code, username, game = data["code"], data["username"], data["game"]
+    code = data["code"]
+    username = data["username"]
+    game = data["game"]
+    room = f"{code}-{game}"
 
     if code in games_in_progress and game in games_in_progress[code]:
         game_info = games_in_progress[code][game]
         game_info.setdefault("players_in_game", set()).add(username)
-        join_room(code)
+        join_room(room)
+
+        # aantal spelers in lobby
+        players_in_lobby = len(active_lobbies.get(code, {}).get("players_in_lobby", []))
+        # aantal spelers in andere games
+        players_in_other_games = sum(
+            len(g.get("players_in_game", []))
+            for g_name, g in games_in_progress[code].items()
+            if g_name != game
+        )
+        # totaal (deze game + lobby + anderen)
+        total = len(game_info["players_in_game"]) + players_in_lobby + players_in_other_games
 
         socketio.emit("update_game_players", {
             "players": list(game_info["players_in_game"]),
-            "players_in_lobby": len(active_lobbies.get(code, {}).get("players_in_lobby", [])),
-            "players_in_other_games": sum(
-                len(g.get("players_in_game", [])) for g_name, g in games_in_progress[code].items()
-                if g_name != game
-            )
-        }, room=code)
+            "players_in_lobby": players_in_lobby,
+            "players_in_other_games": players_in_other_games,
+            "total": total
+        }, room=room)
 
         socketio.emit("update_ready_votes", {
             "votes": list(game_info.get("ready_votes", [])),
             "totalPlayers": len(game_info["players_in_game"]),
             "game": game
-        }, room=code)
+        }, room=room)
+
+        socketio.emit("update_rematch_votes", {
+            "votes": list(game_info.get("rematch_votes", [])),
+            "totalPlayers": len(game_info["players_in_game"]),
+            "game": game
+        }, room=room)
 
         broadcast_lobby_state(code)
 
@@ -184,20 +218,19 @@ def broadcast_lobby_state(code):
     if code in active_lobbies:
         lobby = active_lobbies[code]
         players_lobby = list(lobby["players_in_lobby"])
-        players_in_game = sum(len(g.get("players_in_game", [])) for g in games_in_progress.get(code, {}).values())
-        current_game = None
+        players_in_game_total = sum(len(g.get("players_in_game", [])) for g in games_in_progress.get(code, {}).values())
 
-        if code in games_in_progress and players_in_game > 0:
-            current_game = list(games_in_progress[code].keys())[0]  # toon eerste actieve game
-        else:
-            current_game = None
+        players_in_game_per_game = {
+            game: list(info.get("players_in_game", []))
+            for game, info in games_in_progress.get(code, {}).items()
+        }
 
         socketio.emit("update_lobby", {
             "players": players_lobby,
             "players_in_lobby": players_lobby,
-            "players_in_game": players_in_game,
-            "combined": players_in_game + len(players_lobby),
-            "current_game": current_game,
+            "players_in_game": players_in_game_per_game,
+            "combined": players_in_game_total + len(players_lobby),
+            "games_in_progress": list(players_in_game_per_game.keys()),
         }, room=code)
 
 @socketio.on("trigger_sync")
@@ -208,25 +241,37 @@ def handle_trigger_sync(data):
 
     if code in games_in_progress and game in games_in_progress[code]:
         game_info = games_in_progress[code][game]
+        players_in_lobby = len(active_lobbies.get(code, {}).get("players_in_lobby", []))
+        players_in_other_games = sum(
+            len(g.get("players_in_game", [])) for g_name, g in games_in_progress[code].items()
+            if g_name != game
+        )
+
         socketio.emit("update_game_players", {
             "players": list(game_info["players_in_game"]),
-            "players_in_lobby": len(active_lobbies.get(code, {}).get("players_in_lobby", [])),
-            "players_in_other_games": sum(
-                len(g.get("players_in_game", [])) for g_name, g in games_in_progress[code].items()
-                if g_name != game
-            )
-        }, room=code)
+            "players_in_lobby": players_in_lobby,
+            "players_in_other_games": players_in_other_games,
+            "total": len(game_info["players_in_game"]) + players_in_lobby + players_in_other_games
+        }, room=f"{code}-{game}")
 
         socketio.emit("update_ready_votes", {
             "votes": list(game_info.get("ready_votes", [])),
-            "totalPlayers": len(game_info.get("players_in_game", []))
-        }, room=code)
+            "totalPlayers": len(game_info.get("players_in_game", [])),
+            "game": game
+        }, room=f"{code}-{game}")
+
+        socketio.emit("update_rematch_votes", {
+            "votes": list(game_info.get("rematch_votes", [])),
+            "totalPlayers": len(game_info.get("players_in_game", [])),
+            "game": game
+        }, room=f"{code}-{game}")
 
 @socketio.on("player_ready")
 def handle_player_ready(data):
     code = data["code"]
     username = data["username"]
     game = data["game"]
+    room = f"{code}-{game}"
 
     if code in games_in_progress and game in games_in_progress[code]:
         game_info = games_in_progress[code][game]
@@ -236,16 +281,17 @@ def handle_player_ready(data):
             "votes": list(game_info["ready_votes"]),
             "totalPlayers": len(game_info["players_in_game"]),
             "game": game
-        }, room=code)
+        }, room=room)
 
         if game_info["ready_votes"] == game_info["players_in_game"]:
-            socketio.emit("start_countdown", {"game": game}, room=code)
+            socketio.emit("start_countdown", {"game": game}, room=room)
 
 @socketio.on("player_rematch_vote")
 def handle_player_rematch_vote(data):
     code = data["code"]
     username = data["username"]
     game = data["game"]
+    room = f"{code}-{game}"
 
     if code in games_in_progress and game in games_in_progress[code]:
         game_info = games_in_progress[code][game]
@@ -255,20 +301,20 @@ def handle_player_rematch_vote(data):
             "votes": list(game_info["rematch_votes"]),
             "totalPlayers": len(game_info["players_in_game"]),
             "game": game
-        }, room=code)
+        }, room=room)
 
         if game_info["rematch_votes"] == game_info["players_in_game"]:
             game_info["ready_votes"] = set()
             game_info["rematch_votes"] = set()
-            socketio.emit("start_countdown", {"game": game}, room=code)
+            socketio.emit("start_countdown", {"game": game}, room=room)
 
 # sync tussen browsers voor snake movements
 @socketio.on("snake_move")
 def handle_snake_move(data):
     """update richting van een speler en broadcast naar anderen"""
     code, username, direction = data["code"], data["username"], data["direction"]
-    if code in games_in_progress:
-        socketio.emit("update_snake_direction", {"username": username, "direction": direction}, room=code)
+    room = f"{code}-snake"  # juiste room gebruiken
+    socketio.emit("update_snake_direction", {"username": username, "direction": direction}, room=room)
 
 @socketio.on("pong_move")
 def handle_pong_move(data):
@@ -277,12 +323,8 @@ def handle_pong_move(data):
     username = data["username"]
     x = data["x"]
     y = data["y"]
-
-    if code in games_in_progress:
-        # Stuur enkel de gewijzigde paddle info door
-        socketio.emit("update_paddles", {
-            username: {"x": x, "y": y}
-        }, room=code)
+    room = f"{code}-pong"
+    socketio.emit("update_paddles", {username: {"x": x, "y": y}}, room=room)
 
 @socketio.on("return_to_lobby")
 def handle_return_to_lobby(data):
@@ -295,19 +337,30 @@ def handle_return_to_lobby(data):
         game_info["players_in_game"].discard(username)
         game_info.get("return_votes", set()).discard(username)
 
+        players_in_lobby = len(active_lobbies.get(code, {}).get("players_in_lobby", []))
+        players_in_other_games = sum(
+            len(g.get("players_in_game", [])) for g_name, g in games_in_progress[code].items()
+            if g_name != game
+        )
+
         socketio.emit("update_game_players", {
             "players": list(game_info["players_in_game"]),
-            "players_in_lobby": len(active_lobbies.get(code, {}).get("players_in_lobby", [])),
-            "players_in_other_games": sum(
-                len(g.get("players_in_game", [])) for g_name, g in games_in_progress[code].items()
-                if g_name != game
-            )
-        }, room=code)
+            "players_in_lobby": players_in_lobby,
+            "players_in_other_games": players_in_other_games,
+            "total": len(game_info["players_in_game"]) + players_in_lobby + players_in_other_games
+        }, room=f"{code}-{game}")
 
         socketio.emit("update_ready_votes", {
             "votes": list(game_info.get("ready_votes", [])),
-            "totalPlayers": len(game_info.get("players_in_game", []))
-        }, room=code)
+            "totalPlayers": len(game_info.get("players_in_game", [])),
+            "game": game
+        }, room=f"{code}-{game}")
+
+        socketio.emit("update_rematch_votes", {
+            "votes": list(game_info.get("rematch_votes", [])),
+            "totalPlayers": len(game_info.get("players_in_game", [])),
+            "game": game
+        }, room=f"{code}-{game}")
 
         socketio.emit("return_lobby", {"code": code}, room=request.sid)
 
@@ -342,29 +395,31 @@ def handle_leave_lobby(data):
 def handle_food_update(data):
     code = data["code"]
     food_items = data["foodItems"]
-    socketio.emit("sync_food", {"foodItems": food_items}, room=code)
+    room = f"{code}-snake"
+    socketio.emit("sync_food", {"foodItems": food_items}, room=room)
 
 @socketio.on("ball_update")
 def handle_ball_update(data):
-    """Ontvang balpositie en broadcast naar alle clients"""
     code = data["code"]
     x = data["x"]
     y = data["y"]
-    socketio.emit("sync_ball", {"x": x, "y": y}, room=code)
+    room = f"{code}-pong"
+    socketio.emit("sync_ball", {"x": x, "y": y}, room=room)
 
 @socketio.on("winner_update")
 def handle_winner_update(data):
-    """Host stuurt winnaar + scores naar alle andere clients"""
     code = data["code"]
     winner = data["winner"]
     color = data["color"]
     scores = data.get("scores", {})
+    game = data["game"]
+    room = f"{code}-{game}"
 
     socketio.emit("winner_update", {
         "winner": winner,
         "color": color,
         "scores": scores
-    }, room=code)
+    }, room=room)
 
 # start server
 if __name__ == "__main__":

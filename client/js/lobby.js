@@ -26,36 +26,36 @@ triggerGameSync();
 
 // update lijst spelers
 socket.on("update_lobby", data => {
-    const playersInLobby = data.players_in_lobby.length;
-    const playersInGame = data.players_in_game || 0;
+    const playersInGameObject = data.players_in_game || {};
+    const playersInGame = Object.values(playersInGameObject).reduce((sum, arr) => sum + arr.length, 0);
     const combined = data.combined;
 
     document.getElementById("players").innerText = data.players.map(p => p === username ? `${p} (you)` : p).join(", ");
     document.getElementById("combinedCount").innerText = `${combined}/4 total`;
-    document.getElementById("inLobbyOnly").innerText = `${playersInGame} in game`;
+    document.getElementById("inGameOnly").innerText = `${playersInGame} in game`;
 
     const snakeBtn = document.querySelector('button[onclick="chooseGame(\'snake\')"]');
     const pongBtn = document.querySelector('button[onclick="chooseGame(\'pong\')"]');
     const gameBusyMessage = document.getElementById("gameBusyMessage");
 
-    const youInGame = data.players_in_game[data.current_game]?.includes(username);
-    if (data.games_in_progress?.length > 0) {
-        const activeGames = data.games_in_progress;
-    
-        snakeBtn.disabled = activeGames.includes("snake") && !youInGame;
-        pongBtn.disabled = activeGames.includes("pong") && !youInGame;
-    
-        const busyGames = activeGames.filter(game => !data.players_in_game[game]?.includes(username));
-        if (busyGames.length > 0) {
-            gameBusyMessage.innerText = `${busyGames.map(g => g.charAt(0).toUpperCase() + g.slice(1)).join(", ")} is/zijn bezig...`;
-            gameBusyMessage.style.display = "block";
-        } else {
-            gameBusyMessage.innerText = "";
-            gameBusyMessage.style.display = "none";
-        }
+    const playersPerGame = data.players_in_game || {};
+    const userInSnake = playersPerGame.snake?.includes(username);
+    const userInPong = playersPerGame.pong?.includes(username);
+
+    const snakeBusy = playersPerGame.snake && playersPerGame.snake.length > 0;
+    const pongBusy = playersPerGame.pong && playersPerGame.pong.length > 0;
+
+    snakeBtn.disabled = snakeBusy && !userInSnake;
+    pongBtn.disabled = pongBusy && !userInPong;
+
+    const messages = [];
+    if (snakeBusy && !userInSnake) messages.push("Snake is al bezig");
+    if (pongBusy && !userInPong) messages.push("Pong is al bezig");
+
+    if (messages.length > 0) {
+        gameBusyMessage.innerText = messages.join(" — ");
+        gameBusyMessage.style.display = "block";
     } else {
-        snakeBtn.disabled = false;
-        pongBtn.disabled = false;
         gameBusyMessage.innerText = "";
         gameBusyMessage.style.display = "none";
     }    
@@ -72,7 +72,9 @@ socket.on("update_game_players", data => {
 });
 
 // update gamekeuze tellers
-socket.on("game_choice_update", data => updateGameCounts(data.choices, data.totalPlayers));
+socket.on("game_choice_update", data => {
+    updateGameCounts(data.choices, data.totalPlayers, data.playersInGame || {});
+});
 
 // start game als iedereen dezelfde kiest
 socket.on("start_game", data => {
@@ -86,12 +88,18 @@ function chooseGame(game) {
 }
 
 // update tellers van spelkeuzes
-function updateGameCounts(choices, totalPlayers) {
-    let snakeCount = Object.values(choices).filter(c => c === "snake").length;
-    let pongCount = Object.values(choices).filter(c => c === "pong").length;
+function updateGameCounts(choices, totalPlayers, playersInGame = {}) {
+    const snakeVotes = Object.values(choices).filter(c => c === "snake").length;
+    const pongVotes = Object.values(choices).filter(c => c === "pong").length;
 
-    document.getElementById("snakeCount").innerText = `(${snakeCount}/${totalPlayers})`;
-    document.getElementById("pongCount").innerText = `(${pongCount}/${totalPlayers})`;
+    const snakePlayers = playersInGame.snake?.length || 0;
+    const pongPlayers = playersInGame.pong?.length || 0;
+
+    const snakeTotal = snakeVotes + snakePlayers;
+    const pongTotal = pongVotes + pongPlayers;
+
+    document.getElementById("snakeCount").innerText = `(${snakeTotal}/${totalPlayers + snakePlayers})`;
+    document.getElementById("pongCount").innerText = `(${pongTotal}/${totalPlayers + pongPlayers})`;
 }
 
 // error handlers
