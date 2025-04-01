@@ -9,7 +9,8 @@ let username = sessionStorage.getItem("username") || `player${Math.floor(Math.ra
 sessionStorage.setItem("username", username);
 
 function triggerGameSync() {
-    socket.emit("trigger_sync", { code });
+    const games = ["snake", "pong"];
+    games.forEach(game => socket.emit("trigger_sync", { code, game }));
 }
 
 // automatisch opnieuw lobby joinen bij pagina-lading
@@ -37,23 +38,27 @@ socket.on("update_lobby", data => {
     const pongBtn = document.querySelector('button[onclick="chooseGame(\'pong\')"]');
     const gameBusyMessage = document.getElementById("gameBusyMessage");
 
-    if (playersInGame > 0 && data.current_game) {
-        // game is bezig, lock knoppen
-        snakeBtn.disabled = true;
-        pongBtn.disabled = true;
-
-        // bericht tonen
-        gameBusyMessage.innerText = `${data.current_game.charAt(0).toUpperCase() + data.current_game.slice(1)} is bezig...`;
-        gameBusyMessage.style.display = "block";
+    const youInGame = data.players_in_game[data.current_game]?.includes(username);
+    if (data.games_in_progress?.length > 0) {
+        const activeGames = data.games_in_progress;
+    
+        snakeBtn.disabled = activeGames.includes("snake") && !youInGame;
+        pongBtn.disabled = activeGames.includes("pong") && !youInGame;
+    
+        const busyGames = activeGames.filter(game => !data.players_in_game[game]?.includes(username));
+        if (busyGames.length > 0) {
+            gameBusyMessage.innerText = `${busyGames.map(g => g.charAt(0).toUpperCase() + g.slice(1)).join(", ")} is/zijn bezig...`;
+            gameBusyMessage.style.display = "block";
+        } else {
+            gameBusyMessage.innerText = "";
+            gameBusyMessage.style.display = "none";
+        }
     } else {
-        // geen game bezig, unlock knoppen
         snakeBtn.disabled = false;
         pongBtn.disabled = false;
-
-        // bericht verbergen
         gameBusyMessage.innerText = "";
         gameBusyMessage.style.display = "none";
-    }
+    }    
 });
 
 // ontvangt updates vanuit de game-room (game-side sync)

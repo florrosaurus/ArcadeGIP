@@ -15,6 +15,7 @@ const rematchButton = document.getElementById("rematchButton");
 const rematchCounter = document.getElementById("rematchCounter");
 const returnButton = document.getElementById("returnButton");
 const warningIcon = document.getElementById("warningIcon");
+const currentGameName = "pong";
 
 // pong parameters
 let playerList = [];
@@ -46,7 +47,8 @@ const keyMap = {
 };
 
 // speler joint game room
-socket.emit("join_game", { code, username });
+socket.emit("join_game", { code, username, game: currentGameName });
+socket.emit("trigger_sync", { code, game: currentGameName });
 
 socket.on("update_game_players", data => {
     playerList = data.players;
@@ -57,7 +59,8 @@ socket.on("update_game_players", data => {
     document.getElementById("players").innerText = playerList.map(p => p === username ? `${p} (you)` : p).join(", ");
     document.getElementById("playersInGameCount").innerText = `(${playerList.length + inLobby}/4 total)`;
     document.getElementById("inLobbyOnly").innerText = `${inLobby} in lobby`;
-
+    document.getElementById("inOtherGames").innerText = `${data.players_in_other_games || 0} in other games`;
+    
     updateGameSize(playerList.length);
 
     const valid = [2, 4].includes(playerList.length);
@@ -79,16 +82,19 @@ socket.on("update_game_players", data => {
 });
 
 socket.on("update_ready_votes", data => {
+    if (data.game !== currentGameName) return;
     readyVotes = data.votes;
     totalPlayers = data.totalPlayers;
     readyCounter.innerText = `(${readyVotes.length}/${totalPlayers})`;
 });
 
 socket.on("update_rematch_votes", data => {
+    if (data.game !== currentGameName) return;
     rematchCounter.innerText = `(${data.votes.length}/${data.totalPlayers})`;
 });
 
-socket.on("start_countdown", () => {
+socket.on("start_countdown", data => {
+    if (data.game !== currentGameName) return;
     if (![2, 4].includes(playerList.length)) return resetToLobbyState();
 
     setupPaddles();
@@ -115,17 +121,17 @@ socket.on("start_countdown", () => {
 });
 
 readyButton.addEventListener("click", () => {
-    socket.emit("player_ready", { code, username });
+    socket.emit("player_ready", { code, username, game: currentGameName });
     readyButton.disabled = true;
 });
 
 rematchButton.addEventListener("click", () => {
-    socket.emit("player_rematch_vote", { code, username });
+    socket.emit("player_rematch_vote", { code, username, game: currentGameName });
     rematchButton.disabled = true;
 });
 
 returnButton.addEventListener("click", () => {
-    socket.emit("return_to_lobby", { code, username });
+    socket.emit("return_to_lobby", { code, username, game: currentGameName });
 });
 
 socket.on("return_lobby", data => {
@@ -174,9 +180,10 @@ function handleElimination(side) {
         if (isHost) {
             socket.emit("winner_update", {
                 code,
-                winner: winner.name,
-                color: winner.color,
-                scores
+                winner: winnerName,
+                color: paddles[winnerName]?.color,
+                scores,
+                game: currentGameName
             });
         }
 
@@ -426,8 +433,9 @@ function handleKill(side) {
             code,
             winner: winnerName,
             color: paddles[winnerName]?.color,
-            scores
-        });
+            scores,
+            game: currentGameName
+        });        
     }
 
     rematchButton.style.display = "inline-block";

@@ -37,8 +37,16 @@ const keyMap = {
     w: "up", s: "down", a: "left", d: "right", z: "up", q: "left"
 };
 
-// speler joint game room
-socket.emit("join_game", { code, username });
+const currentGameName = "snake";
+socket.emit("join_game", {
+    code,
+    username,
+    game: currentGameName
+});
+socket.emit("trigger_sync", {
+    code,
+    game: "snake"
+});
 
 // snakes spawnen
 function spawnSnakes(players) {
@@ -196,15 +204,15 @@ function checkForWinner() {
 }
 
 readyButton.addEventListener("click", () => {
-    socket.emit("player_ready", { code, username });
+    socket.emit("player_ready", { code, username, game: currentGameName });
     readyButton.disabled = true;
 });
 rematchButton.addEventListener("click", () => {
-    socket.emit("player_rematch_vote", { code, username });
+    socket.emit("player_rematch_vote", { code, username, game: currentGameName });
     rematchButton.disabled = true;
 });
 returnButton.addEventListener("click", () => {
-    socket.emit("return_to_lobby", { code, username });
+    socket.emit("return_to_lobby", { code, username, game: currentGameName });
 });
 
 socket.on("update_snake_direction", data => {
@@ -213,8 +221,10 @@ socket.on("update_snake_direction", data => {
     }
 });
 
-socket.on("start_countdown", () => {
+socket.on("start_countdown", data => {
+    if (data.game !== currentGameName) return;
     if (playerList.length < 2) return resetToLobbyState();
+
     readyButton.style.display = "none";
     rematchButton.style.display = "none";
     returnButton.disabled = true;
@@ -229,8 +239,7 @@ socket.on("start_countdown", () => {
     scores = {};
     playerList.forEach(p => scores[p] = 0);
     updateScoreboard();
-    
-    // pas op start countdown
+
     spawnFood();
 
     let counter = 3;
@@ -262,7 +271,8 @@ socket.on("update_game_players", data => {
     document.getElementById("players").innerText = playerList.map(p => p === username ? `${p} (you)` : p).join(", ");
     document.getElementById("playersInGameCount").innerText = `(${playerList.length + inLobby}/4 total)`;
     document.getElementById("inLobbyOnly").innerText = `${inLobby} in lobby`;
-
+    document.getElementById("inOtherGames").innerText = `${data.players_in_other_games || 0} in other games`;
+    
     if (playerList.length < 2 && (gameStarted || countdown !== null)) {
         resetToLobbyState();
     }
@@ -293,12 +303,14 @@ socket.on("update_game_players", data => {
 });
 
 socket.on("update_ready_votes", data => {
+    if (data.game !== currentGameName) return;
     readyVotes = data.votes;
     totalPlayers = data.totalPlayers;
     readyCounter.innerText = `(${readyVotes.length}/${totalPlayers})`;
 });
 
 socket.on("update_rematch_votes", data => {
+    if (data.game !== currentGameName) return;
     rematchCounter.innerText = `(${data.votes.length}/${data.totalPlayers})`;
 });
 
