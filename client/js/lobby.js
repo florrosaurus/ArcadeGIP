@@ -117,3 +117,12 @@ function leaveLobby() {
     socket.emit("leave_lobby", { code, username });
     triggerGameSync();
 }
+
+window.addEventListener("load", () => {
+    const loginBox = document.getElementById("loginStatus");
+    if (loginBox) {
+        const name = sessionStorage.getItem("username");
+        const loggedIn = sessionStorage.getItem("loggedIn") === "true";
+        loginBox.innerText = loggedIn ? `Logged in as ${name}` : "Not logged in";
+    }
+});

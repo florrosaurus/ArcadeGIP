@@ -18,5 +18,13 @@
     <input type="text" id="lobbyCode" maxlength="6" placeholder="Enter code">
     <button onclick="joinLobby()">Join</button>
 
+    <div id="loginContainer" style="position:absolute; top:10px; right:10px;">
+        <div id="loginStatus"></div>
+        <ul id="loginDropdown">
+            <li onclick="window.location.href='/account.html'" style="padding: 5px 10px; cursor: pointer;">Account</li>
+            <li onclick="logout()" style="padding: 5px 10px; cursor: pointer;">Log out</li>
+        </ul>
+    </div>    
+   
 </body>
 </html>

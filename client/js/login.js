@@ -11,6 +11,7 @@ function login() {
     .then(({ ok, data }) => {
         if (ok) {
             sessionStorage.setItem("username", name);
+            sessionStorage.setItem("loggedIn", "true");
             window.location.href = "/index.html";
         } else {
             document.getElementById("error").innerText = data.message || "Login mislukt";
@@ -31,9 +32,14 @@ function register() {
     .then(({ ok, data }) => {
         if (ok) {
             sessionStorage.setItem("username", name);
-            window.location.href = "/index.html";
+            sessionStorage.setItem("loggedIn", "true");
+            window.location.href = "/index.html";        
         } else {
             document.getElementById("error").innerText = data.message || "Registratie mislukt";
         }
     });
+}
+
+function goBack() {
+    window.location.href = "/index.html";
 }
