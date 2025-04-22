@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <title>Account</title>
+    <link rel="stylesheet" href="css/account.css">
+    <script src="js/account.js" defer></script>
+    <style>
+        body { font-family: Arial; }
+        .tabs { display: flex; margin-bottom: 20px; }
+        .tab {
+            padding: 10px 20px;
+            margin-right: 10px;
+            border: 1px solid #ccc;
+            cursor: pointer;
+            background-color: #f0f0f0;
+        }
+        .tab.active {
+            background-color: #fff;
+            border-bottom: none;
+            font-weight: bold;
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 999;
+        }
+        .popup {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.3);
+        }
+    </style>
+</head>
+<body>
+    <h1>account</h1>
+
+    <div class="tabs">
+        <div class="tab active" data-tab="settings">settings</div>
+        <div class="tab" data-tab="statistics">statistics</div>
+    </div>
+
+    <div id="settings" class="tab-content active">
+        <h2>Accountinstellingen</h2>
+        <p>
+            Gebruikersnaam: <span id="currentUsername"></span>
+            <button onclick="openChangeName()">Change</button>
+        </p>
+        <p>
+            Wachtwoord: ********
+            <button onclick="openChangePassword()">Change</button>
+        </p>
+    </div>
+    
+    <div id="statistics" class="tab-content">
+        <p>statistieken komen hier</p>
+    </div>
+
+    <div id="popupOverlay" style="display:none;" class="overlay">
+        <div class="popup" id="popupContent"></div>
+    </div>
+
+    <button onclick="goBack()">back to mainscreen</button>
+</body>
+</html>

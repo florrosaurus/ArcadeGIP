@@ -43,3 +43,9 @@ function register() {
 function goBack() {
     window.location.href = "/index.html";
 }
+
+function togglePassword(id, icon) {
+    const input = document.getElementById(id);
+    const isVisible = input.type === "text";
+    input.type = isVisible ? "password" : "text";
+}

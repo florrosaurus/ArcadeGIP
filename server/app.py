@@ -4,7 +4,8 @@ from flask_socketio import SocketIO, join_room, leave_room
 import os
 import random
 import string
-from database import init_db, register_user, verify_login #type:ignore
+from database import init_db, register_user, verify_login
+from database import change_username, change_password
 from flask import session
 
 logged_in_users = set()
@@ -98,6 +99,34 @@ def handle_logout():
     name = data.get("username")
     logged_in_users.discard(name)
     return jsonify({"success": True})
+
+@app.route("/change_username", methods=["PATCH"])
+def handle_change_username():
+    data = request.json
+    old = data.get("old_name")
+    new = data.get("new_name")
+    pw = data.get("password")
+    if not old or not new or not pw or len(new) > MAX_USERNAME_LENGTH:
+        return jsonify({"success": False, "message": "Ongeldige input"}), 400
+
+    success, msg = change_username(old, new, pw)
+    
+    if success:
+        logged_in_users.discard(old)
+        logged_in_users.add(new)
+    
+    return jsonify({"success": success, "message": msg})
+
+@app.route("/change_password", methods=["PATCH"])
+def handle_change_password():
+    data = request.json
+    name = data.get("username")
+    old = data.get("old_password")
+    new = data.get("new_password")
+    if not name or not old or not new:
+        return jsonify({"success": False, "message": "Ongeldige input"}), 400
+    success, msg = change_password(name, old, new)
+    return jsonify({"success": success, "message": msg})
 
 # lobby joinen
 @app.route("/join_lobby", methods=["POST"])
