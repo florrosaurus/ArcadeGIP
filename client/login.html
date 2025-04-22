@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <title>Login of Register</title>
+    <script src="js/login.js" defer></script>
+    <style>
+        body { font-family: sans-serif; padding: 30px; }
+        input { margin: 5px 0; display: block; }
+        #error { color: red; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h2>Account</h2>
+
+    <label>Gebruikersnaam</label>
+    <input type="text" id="username" placeholder="Gebruikersnaam" maxlength="20">
+
+    <label>Wachtwoord</label>
+    <input type="password" id="password" placeholder="wachtwoord">
+
+    <button onclick="login()">Login</button>
+    <button onclick="register()">Register</button>
+
+    <p id="error"></p>
+</body>
+</html>

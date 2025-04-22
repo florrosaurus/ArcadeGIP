@@ -4,6 +4,11 @@ from flask_socketio import SocketIO, join_room, leave_room
 import os
 import random
 import string
+from database import init_db, register_user, verify_login #type:ignore
+from flask import session
+
+logged_in_users = set()
+init_db()
 
 # basisinstellingen
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -59,6 +64,40 @@ def create_lobby():
     """maakt nieuwe lobby aan en geeft code terug"""
     code = generate_unique_code()
     return jsonify({"code": code})
+
+MAX_USERNAME_LENGTH = 20
+
+@app.route("/register", methods=["POST"])
+def handle_register():
+    data = request.json
+    name = data.get("username")
+    pw = data.get("password")
+    if not name or not pw or len(name) > MAX_USERNAME_LENGTH:
+        return jsonify({"success": False, "message": "Ongeldige input"}), 400
+    if register_user(name, pw):
+        return jsonify({"success": True})
+    return jsonify({"success": False, "message": "Naam al in gebruik"}), 409
+
+@app.route("/login", methods=["POST"])
+def handle_login():
+    data = request.json
+    name = data.get("username")
+    pw = data.get("password")
+    if not name or not pw or len(name) > MAX_USERNAME_LENGTH:
+        return jsonify({"success": False, "message": "Ongeldige input"}), 400
+    if name in logged_in_users:
+        return jsonify({"success": False, "message": "Gebruiker al ingelogd"}), 403
+    if verify_login(name, pw):
+        logged_in_users.add(name)
+        return jsonify({"success": True})
+    return jsonify({"success": False, "message": "Foute login"}), 401
+
+@app.route("/logout", methods=["POST"])
+def handle_logout():
+    data = request.json
+    name = data.get("username")
+    logged_in_users.discard(name)
+    return jsonify({"success": True})
 
 # lobby joinen
 @app.route("/join_lobby", methods=["POST"])
