@@ -20,10 +20,40 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (!loggedIn) {
         window.location.href = "/index.html";
+        return;
     }
 
     document.getElementById("currentUsername").innerText = username;
+    loadStats(username);
 });
+
+function loadStats(username) {
+    fetch("/get_stats", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success && data.stats) {
+            const statsDiv = document.getElementById("statistics");
+            const s = data.stats;
+            statsDiv.innerHTML = `
+                <h2>Spelstatistieken</h2>
+                <ul>
+                    <li>snake wins: ${s.snake_wins}</li>
+                    <li>snake losses: ${s.snake_losses}</li>
+                    <li>snake highscore: ${s.snake_highscore}</li>
+                    <li>pong wins: ${s.pong_wins}</li>
+                    <li>pong losses: ${s.pong_losses}</li>
+                    <li>totaal aantal wins: ${s.total_wins}</li>
+                </ul>
+            `;
+        } else {
+            console.warn("kon statistieken niet ophalen.");
+        }
+    });
+}
 
 // Terug naar home
 function goBack() {
@@ -80,6 +110,7 @@ function submitNameChange() {
     .then(data => {
         if (data.success) {
             sessionStorage.setItem("username", newName);
+            loadStats(newName);
             document.getElementById("currentUsername").innerText = newName;
             closePopup();
             showNotification("Gebruikersnaam gewijzigd!");

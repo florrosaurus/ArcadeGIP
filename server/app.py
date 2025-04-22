@@ -6,7 +6,9 @@ import random
 import string
 from database import init_db, register_user, verify_login
 from database import change_username, change_password
+from database import get_user_stats
 from flask import session
+
 
 logged_in_users = set()
 init_db()
@@ -127,6 +129,16 @@ def handle_change_password():
         return jsonify({"success": False, "message": "Ongeldige input"}), 400
     success, msg = change_password(name, old, new)
     return jsonify({"success": success, "message": msg})
+
+@app.route("/get_stats", methods=["POST"])
+def get_stats():
+    data = request.json
+    username = data.get("username")
+    if not username:
+        return jsonify({"success": False, "message": "geen gebruiker opgegeven"}), 400
+
+    stats = get_user_stats(username)
+    return jsonify({"success": True, "stats": stats})
 
 # lobby joinen
 @app.route("/join_lobby", methods=["POST"])

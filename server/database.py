@@ -52,3 +52,18 @@ def change_password(username, old_pw, new_pw):
         c.execute("UPDATE users SET password = ? WHERE username = ?", (new_pw, username))
         conn.commit()
         return True, "succes"
+
+def get_user_stats(username):
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        c.execute("""
+            SELECT snake_wins, snake_losses, snake_highscore,
+                   pong_wins, pong_losses, total_wins
+            FROM users WHERE username = ?
+        """, (username,))
+        row = c.fetchone()
+        if row:
+            keys = ["snake_wins", "snake_losses", "snake_highscore",
+                    "pong_wins", "pong_losses", "total_wins"]
+            return dict(zip(keys, row))
+        return {}
