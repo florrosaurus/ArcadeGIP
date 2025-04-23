@@ -67,3 +67,26 @@ def get_user_stats(username):
                     "pong_wins", "pong_losses", "total_wins"]
             return dict(zip(keys, row))
         return {}
+
+def update_stats(username, game, did_win, score):
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+
+        if game == "snake":
+            if did_win:
+                c.execute("UPDATE users SET snake_wins = snake_wins + 1, total_wins = total_wins + 1 WHERE username = ?", (username,))
+            else:
+                c.execute("UPDATE users SET snake_losses = snake_losses + 1 WHERE username = ?", (username,))
+            
+            c.execute("SELECT snake_highscore FROM users WHERE username = ?", (username,))
+            high = c.fetchone()
+            if high and score > (high[0] or 0):
+                c.execute("UPDATE users SET snake_highscore = ? WHERE username = ?", (score, username))
+
+        elif game == "pong":
+            if did_win:
+                c.execute("UPDATE users SET pong_wins = pong_wins + 1, total_wins = total_wins + 1 WHERE username = ?", (username,))
+            else:
+                c.execute("UPDATE users SET pong_losses = pong_losses + 1 WHERE username = ?", (username,))
+        
+        conn.commit()

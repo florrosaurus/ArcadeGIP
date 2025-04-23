@@ -28,6 +28,7 @@ let moveInterval = null;
 let canChangeDirection = true;
 let isDead = false;
 let winner = null;
+let winnerEmitted = false;
 let foodItems = [];
 let scores = {};
 let amIFoodMaster = false;
@@ -189,7 +190,7 @@ function handleDeath() { isDead = true; }
 // winnaar checken
 function checkForWinner() {
     const alive = Object.keys(snakes).filter(p => snakes[p].alive);
-    if (alive.length === 1) {
+    if (alive.length === 1 && !winnerEmitted) {
         const last = alive[0];
         winner = { name: last, color: snakes[last].color };
         clearInterval(moveInterval);
@@ -199,8 +200,20 @@ function checkForWinner() {
         rematchButton.disabled = false;
         returnButton.disabled = false;
 
-        // FIX: teller resetten zodra rematch verschijnt
         rematchCounter.innerText = `(0/${playerList.length})`;
+
+        // alleen eerste speler emit
+        if (amIFoodMaster) {
+            socket.emit("winner_update", {
+                code: code,
+                winner: last,
+                color: snakes[last].color,
+                scores: scores,
+                game: "snake"
+            });
+        }
+
+        winnerEmitted = true;
     }
 }
 
@@ -408,8 +421,24 @@ function updateScoreboard() {
     });
 }
 
-socket.on("return_lobby", data => {
-    window.location.assign(`/lobby.html?code=${data.code}`);
+socket.on("return_lobby", (data) => {
+    const username = sessionStorage.getItem("username");
+    if (username) {
+        fetch("/get_stats", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success && data.stats) {
+                // sla stats tijdelijk op in sessionStorage
+                sessionStorage.setItem("userStats", JSON.stringify(data.stats));
+            }
+        });
+    }
+
+    window.location.href = "/lobby.html?code=" + data.code;
 });
 
 socket.on("disconnect", reason => {

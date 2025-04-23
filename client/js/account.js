@@ -28,6 +28,15 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function loadStats(username) {
+    // kijk eerst of stats al in sessionStorage zitten
+    const cached = sessionStorage.getItem("userStats");
+    if (cached) {
+        const s = JSON.parse(cached);
+        renderStats(s);
+        sessionStorage.removeItem("userStats"); // 1x tonen
+    }
+
+    // en tegelijk: vernieuwde versie ophalen (async)
     fetch("/get_stats", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -36,23 +45,24 @@ function loadStats(username) {
     .then(res => res.json())
     .then(data => {
         if (data.success && data.stats) {
-            const statsDiv = document.getElementById("statistics");
-            const s = data.stats;
-            statsDiv.innerHTML = `
-                <h2>Spelstatistieken</h2>
-                <ul>
-                    <li>snake wins: ${s.snake_wins}</li>
-                    <li>snake losses: ${s.snake_losses}</li>
-                    <li>snake highscore: ${s.snake_highscore}</li>
-                    <li>pong wins: ${s.pong_wins}</li>
-                    <li>pong losses: ${s.pong_losses}</li>
-                    <li>totaal aantal wins: ${s.total_wins}</li>
-                </ul>
-            `;
-        } else {
-            console.warn("kon statistieken niet ophalen.");
+            renderStats(data.stats);
         }
     });
+}
+
+function renderStats(s) {
+    const statsDiv = document.getElementById("statistics");
+    statsDiv.innerHTML = `
+        <h2>statistieken</h2>
+        <ul>
+            <li>snake wins: ${s.snake_wins}</li>
+            <li>snake losses: ${s.snake_losses}</li>
+            <li>snake highscore: ${s.snake_highscore}</li>
+            <li>pong wins: ${s.pong_wins}</li>
+            <li>pong losses: ${s.pong_losses}</li>
+            <li>totaal aantal wins: ${s.total_wins}</li>
+        </ul>
+    `;
 }
 
 // Terug naar home

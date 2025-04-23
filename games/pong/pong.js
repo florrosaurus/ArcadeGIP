@@ -37,6 +37,7 @@ let isHost = false;
 
 let scores = {};
 let winner = null;
+let winnerEmitted = false;
 let isDead = false;
 
 const keyMap = {
@@ -180,15 +181,16 @@ function handleElimination(side) {
         clearInterval(ballInterval);
         drawPaddles();
 
-        if (isHost) {
+        if (isHost && !winnerEmitted && winner) {
             socket.emit("winner_update", {
                 code,
-                winner: winnerName,
-                color: paddles[winnerName]?.color,
+                winner: winner.name,
+                color: winner.color,
                 scores,
                 game: currentGameName
             });
-        }
+            winnerEmitted = true;
+        }           
 
         rematchButton.style.display = "inline-block";
         rematchButton.disabled = false;

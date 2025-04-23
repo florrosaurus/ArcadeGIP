@@ -7,6 +7,7 @@ import string
 from database import init_db, register_user, verify_login
 from database import change_username, change_password
 from database import get_user_stats
+from database import update_stats
 from flask import session
 
 
@@ -494,6 +495,15 @@ def handle_winner_update(data):
     scores = data.get("scores", {})
     game = data["game"]
     room = f"{code}-{game}"
+
+    # stats verwerken
+    if code in games_in_progress and game in games_in_progress[code]:
+        players = games_in_progress[code][game]["players_in_game"]
+
+        for player in players:
+            score = scores.get(player, 0)
+            did_win = (player == winner)
+            update_stats(player, game, did_win, score)
 
     socketio.emit("winner_update", {
         "winner": winner,
