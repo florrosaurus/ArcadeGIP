@@ -1,24 +1,99 @@
 <!DOCTYPE html>
 <html lang="nl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>lobby</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.0/socket.io.js"></script>
-    <script src="js/lobby.js" defer></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lobby</title>
+  <link rel="stylesheet" href="css/lobby.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.0/socket.io.js"></script>
+  <script src="js/lobby.js" defer></script>
 </head>
 <body>
-    <h1>lobby</h1>
-    
-    <p>lobby code: <span id="lobbyCode"></span></p>
-    <p>Players: <span id="players"></span> (<span id="combinedCount">0/4 total</span>)</p>
-    <p><span id="inGameOnly">0 in game</span></p>
-    <div id="loginStatus" style="position:absolute; top:10px; right:10px;"></div>
+  <canvas id="starCanvas"></canvas>
 
-    <button onclick="chooseGame('snake')">Snake <span id="snakeCount">(0/0)</span></button>
-    <button onclick="chooseGame('pong')">Pong <span id="pongCount">(0/0)</span></button>
-    <p id="gameBusyMessage" style="color:red; font-weight:bold; display:none;"></p>
+  <div id="loginContainer">
+    <div id="loginStatus"></div>
+  </div>
 
-    <button onclick="leaveLobby()">leave lobby</button>
+  <h1>Lobby</h1>
+
+  <p>Lobby Code: <span id="lobbyCode"></span></p>
+  <p>Players: <span id="players"></span> (<span id="combinedCount">0/4 total</span>)</p>
+  <p><span id="inGameOnly">0 In Game</span></p>
+
+  <div id="gameButtons">
+    <div class="gameButton" id="snakeButton" onclick="chooseGame('snake')">
+      <canvas class="previewCanvas" id="snakePreview"></canvas>
+      <span>Snake</span>
+      <div id="snakeCount">(0/0)</div>
+    </div>
+    <div class="gameButton" id="pongButton" onclick="chooseGame('pong')">
+      <canvas class="previewCanvas" id="pongPreview"></canvas>
+      <span>Pong</span>
+      <div id="pongCount">(0/0)</div>
+    </div>
+  </div>
+
+  <p id="gameBusyMessage" style="color:red; font-weight:bold; display:none;"></p>
+
+  <button id="leaveButton" onclick="leaveLobby()">Leave Lobby</button>
+  <canvas id="starCanvas"></canvas>
+  <script>
+  const canvas = document.getElementById('starCanvas');
+  const ctx = canvas.getContext('2d');
+  let stars = [];
+  
+  function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  
+  function createStars(count) {
+    stars = [];
+    for (let i = 0; i < count; i++) {
+      stars.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        radius: Math.random() * 1.5,
+        speed: 0.2 + Math.random() * 0.5
+      });
+    }
+  }
+  
+  function drawStars() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#FFFFFF";
+    for (let star of stars) {
+      ctx.beginPath();
+      ctx.arc(star.x, star.y, star.radius, 0, 2 * Math.PI);
+      ctx.fill();
+    }
+  }
+  
+  function updateStars() {
+    for (let star of stars) {
+      star.y += star.speed;
+      if (star.y > canvas.height) {
+        star.y = 0;
+        star.x = Math.random() * canvas.width;
+      }
+    }
+  }
+  
+  function animate() {
+    drawStars();
+    updateStars();
+    requestAnimationFrame(animate);
+  }
+  
+  window.addEventListener('resize', () => {
+    resizeCanvas();
+    createStars(150);
+  });
+  
+  resizeCanvas();
+  createStars(150);
+  animate();
+  </script>    
 </body>
 </html>

@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <title>Login of Register</title>
     <script src="js/login.js" defer></script>
+    <link rel="stylesheet" href="css/login.css">
     <style>
         body { font-family: sans-serif; padding: 30px; }
         input { margin: 5px 0; display: block; }
@@ -11,18 +12,20 @@
     </style>
 </head>
 <body>
-    <h2>Account</h2>
+    <h1>Login / Register</h1>
 
-    <label>Gebruikersnaam</label>
-    <input type="text" id="username" placeholder="Gebruikersnaam" maxlength="20">
+    <label>Username</label>
+    <input type="text" id="username" placeholder="Username" maxlength="20">
 
-    <label>Wachtwoord</label>
-    <input type="password" id="password" placeholder="wachtwoord">
-    <span class="toggle-password" onclick="togglePassword('password', this)">👁️</span>
+    <label>Password</label>
+    <input type="password" id="password" placeholder="Password">
+    <span id="togglePassword" class="toggle-password" onclick="togglePassword('password', this)">View Password</span>
 
-    <button onclick="login()">Login</button>
-    <button onclick="register()">Register</button>
-    <button onclick="goBack()">back to mainscreen</button>
+    <div id="buttonContainer">
+        <button onclick="login()">Login</button>
+        <button onclick="register()">Register</button>
+      </div>      
+    <button id="goBack" onclick="goBack()">back to mainscreen</button>
 
     <p id="error"></p>
 </body>

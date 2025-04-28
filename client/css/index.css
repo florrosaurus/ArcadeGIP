@@ -1,0 +1,118 @@
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+body {
+  background-color: #000;
+  color: #33CCFF;
+  font-family: 'Press Start 2P', monospace;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+/* Canvas voor vallende sterren */
+#starCanvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1; /* achter alles */
+  background: linear-gradient(135deg, #000000, #0a0a0a);
+}
+
+h1 {
+  font-size: 2rem;
+  color: #FFFF00;
+  text-shadow: 0 0 8px #FFFF00;
+  margin-bottom: 2rem;
+}
+
+h3 {
+  font-size: 0.8rem;
+  color: #FFFF00;
+  text-shadow: 0 0 6px #FFFF00;
+  margin-top: 2rem;
+}
+
+button {
+  background-color: black;
+  border: 2px solid #33CCFF;
+  color: #33CCFF;
+  padding: 1rem 2rem;
+  font-size: 0.8rem;
+  font-family: 'Press Start 2P', monospace;
+  text-transform: uppercase;
+  margin: 0.5rem;
+  cursor: pointer;
+  box-shadow: 0 0 8px #33CCFF;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+button:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 15px #33CCFF;
+}
+
+input[type="text"] {
+  padding: 0.7rem;
+  font-size: 1rem;
+  border: 2px solid #66FF66 ;
+  background-color: black;
+  color: #66FF66 ;
+  font-family: 'Press Start 2P', monospace;
+  text-align: center;
+  box-shadow: 0 0 8px #66FF66 ;
+  margin-top: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+#loginContainer {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-size: 0.6rem;
+  font-family: 'Press Start 2P', monospace;
+  text-align: right;
+}
+
+#loginStatus {
+  background-color: black;
+  border: 2px solid #33CCFF;
+  padding: 0.5rem;
+  box-shadow: 0 0 6px #33CCFF;
+  margin-bottom: 0.3rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+#loginStatus:hover {
+  background-color: black;
+  box-shadow: 0 0 10px #33CCFF;
+}
+
+#loginDropdown {
+  display: none;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  background-color: black;
+  border: 2px solid #33CCFF;
+  box-shadow: 0 0 10px #33CCFF;
+}
+
+#loginDropdown li {
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid #33CCFF;
+  color: #33CCFF;
+  cursor: pointer;
+}
+
+#loginDropdown li:hover {
+  background-color: #222;
+}

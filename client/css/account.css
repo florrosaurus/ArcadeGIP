@@ -1,0 +1,168 @@
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+body {
+  background-color: #000;
+  color: #33CCFF;
+  font-family: 'Press Start 2P', monospace;
+  margin: 0;
+  padding: 2rem;
+  min-height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  .tabs { 
+    display: flex; 
+    gap: 1rem;
+    margin-bottom: 20px; 
+}
+.tab {
+    padding: 0.8rem 1.5rem;
+    background-color: black;
+    border: 2px solid #33CCFF;
+    box-shadow: 0 0 8px #33CCFF;
+    cursor: pointer;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    transition: all 0.2s ease;
+}
+.tab.active {
+      background: black;
+      border-color: #FFFF00;
+      box-shadow: 0 0 15px #FFFF00, 0 0 5px #FFFF00 inset;
+      color: #FFFF00;
+}
+
+.tab:hover {
+    background-color: #111;
+    box-shadow: 0 0 15px #66FF66;
+    border-color: #66FF66;
+    color: #66FF66;
+}
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+.overlay {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      background: black;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 999;
+}
+
+.tab-content {
+    width: 100%;
+    max-width: 600px;
+}
+  
+.tab-content p {
+    margin: .25rem 0;
+}
+
+.popup {
+      background: black;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.3);
+  }
+
+}
+
+h1 {
+  color: #FFFF00;
+  text-shadow: 0 0 8px #FFFF00;
+  margin-bottom: 2rem;
+}
+
+h2 {
+    color: #66FF66;
+    text-shadow: 0 0 8px #66FF66;
+    margin-bottom: 2rem; 
+}
+
+#popupOverlay {
+  background: rgba(0,0,0,0.8);
+}
+
+.popup {
+  background-color: black;
+  border: 2px solid #33CCFF;
+  box-shadow: 0 0 15px #33CCFF;
+  padding: 2rem;
+  text-align: center;
+}
+
+button {
+  background-color: black;
+  border: 2px solid #33CCFF;
+  color: #33CCFF;
+  padding: 0.8rem 2rem;
+  font-size: 0.7rem;
+  font-family: 'Press Start 2P', monospace;
+  text-transform: uppercase;
+  margin: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+button:hover {
+  background-color: #111;
+  box-shadow: 0 0 15px #33CCFF;
+  transform: scale(1.05);
+}
+
+#starCanvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+  }
+  
+#goBack {
+    margin-top: 3rem;
+    padding: 1rem 2rem;
+    font-size: 0.8rem;
+    font-family: 'Press Start 2P', monospace;
+    background: black;
+    color: #FF5555;
+    border: 3px solid #FF5555;
+    box-shadow: 0 0 10px #FF5555;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+  
+#goBack:hover {
+    background: #222;
+    border-color: #FF5555;
+    box-shadow: 0 0 15px #FF5555, 0 0 20px #FF5555 inset;
+  }
+
+input[type="text"] {
+    padding: 0.7rem;
+    font-size: 1rem;
+    border: 2px solid #66FF66 ;
+    background-color: black;
+    color: #66FF66 ;
+    font-family: 'Press Start 2P', monospace;
+    text-align: center;
+    box-shadow: 0 0 8px #66FF66 ;
+    margin-top: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+input[type="password"] {
+    padding: 0.7rem;
+    font-size: 1rem;
+    border: 2px solid #66FF66 ;
+    background-color: black;
+    color: #66FF66 ;
+    font-family: 'Press Start 2P', monospace;
+    text-align: center;
+    box-shadow: 0 0 8px #66FF66 ;
+    margin-top: 0.5rem;
+    margin-bottom: 1rem;
+}

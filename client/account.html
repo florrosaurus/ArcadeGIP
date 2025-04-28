@@ -5,69 +5,92 @@
     <title>Account</title>
     <link rel="stylesheet" href="css/account.css">
     <script src="js/account.js" defer></script>
-    <style>
-        body { font-family: Arial; }
-        .tabs { display: flex; margin-bottom: 20px; }
-        .tab {
-            padding: 10px 20px;
-            margin-right: 10px;
-            border: 1px solid #ccc;
-            cursor: pointer;
-            background-color: #f0f0f0;
-        }
-        .tab.active {
-            background-color: #fff;
-            border-bottom: none;
-            font-weight: bold;
-        }
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
-        .overlay {
-            position: fixed;
-            top: 0; left: 0;
-            width: 100vw; height: 100vh;
-            background: rgba(0,0,0,0.5);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 999;
-        }
-        .popup {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.3);
-        }
-    </style>
+    <link rel="stylesheet" href="css/account.css">
 </head>
 <body>
-    <h1>account</h1>
+    <h1>Account</h1>
 
     <div class="tabs">
-        <div class="tab active" data-tab="settings">settings</div>
-        <div class="tab" data-tab="statistics">statistics</div>
+        <div class="tab active" data-tab="settings">Settings</div>
+        <div class="tab" data-tab="statistics">Statistics</div>
     </div>
 
     <div id="settings" class="tab-content active">
-        <h2>Accountinstellingen</h2>
+        <h2>Settings</h2>
         <p>
-            Gebruikersnaam: <span id="currentUsername"></span>
+            Username: <span id="currentUsername"></span>
             <button onclick="openChangeName()">Change</button>
         </p>
         <p>
-            Wachtwoord: ********
+            Password: ********
             <button onclick="openChangePassword()">Change</button>
         </p>
     </div>
     
-    <div id="statistics" class="tab-content">
-        <p>statistieken komen hier</p>
-    </div>
+    <div id="statistics" class="tab-content"></div>
 
     <div id="popupOverlay" style="display:none;" class="overlay">
         <div class="popup" id="popupContent"></div>
     </div>
 
-    <button onclick="goBack()">back to mainscreen</button>
+    <button id="goBack" onclick="goBack()">back to mainscreen</button>
+    <canvas id="starCanvas"></canvas>
+    <script>
+    const canvas = document.getElementById('starCanvas');
+    const ctx = canvas.getContext('2d');
+    let stars = [];
+    
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    
+    function createStars(count) {
+      stars = [];
+      for (let i = 0; i < count; i++) {
+        stars.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          radius: Math.random() * 1.5,
+          speed: 0.2 + Math.random() * 0.5
+        });
+      }
+    }
+    
+    function drawStars() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "#FFFFFF";
+      for (let star of stars) {
+        ctx.beginPath();
+        ctx.arc(star.x, star.y, star.radius, 0, 2 * Math.PI);
+        ctx.fill();
+      }
+    }
+    
+    function updateStars() {
+      for (let star of stars) {
+        star.y += star.speed;
+        if (star.y > canvas.height) {
+          star.y = 0;
+          star.x = Math.random() * canvas.width;
+        }
+      }
+    }
+    
+    function animate() {
+      drawStars();
+      updateStars();
+      requestAnimationFrame(animate);
+    }
+    
+    window.addEventListener('resize', () => {
+      resizeCanvas();
+      createStars(150);
+    });
+    
+    resizeCanvas();
+    createStars(150);
+    animate();
+    </script>    
 </body>
 </html>

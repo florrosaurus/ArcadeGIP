@@ -1,0 +1,137 @@
+/* 🎮 lobby.css - Retro-Pixel Arcade Stijl (nettere versie) */
+
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+body {
+  margin: 0;
+  padding: 0;
+  background: linear-gradient(135deg, #000000, #0a0a0a);
+  font-family: 'Press Start 2P', monospace;
+  color: #33CCFF;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100vh;
+  position: relative;
+}
+
+#starCanvas {
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  z-index: -1;
+}
+
+h1 {
+  margin-top: 2rem;
+  font-size: 2rem;
+  color: #FFFF00;
+  text-shadow: 0 0 8px #FFFF00
+}
+
+#loginContainer {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-size: 0.6rem;
+  color: #FFFFFF;
+}
+
+#gameButtons {
+  display: flex;
+  gap: 2rem;
+  margin-top: 3rem;
+}
+
+.gameButton {
+  width: 160px;
+  height: 160px;
+  background-color: black;
+  border: 3px solid #33CCFF;
+  box-shadow: 0 0 12px #33CCFF;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  cursor: pointer;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.gameButton:hover {
+  border-color: #66FF66;
+  box-shadow: 0 0 15px #66FF66;
+  background-color: #111;
+  transform: scale(1.05);
+}
+
+.gameButton span {
+  font-size: 0.7rem;
+  margin-top: 0.5rem;
+  color: #66FF66;
+  text-shadow: 0 0 6px #66FF66;
+}
+
+.previewCanvas {
+  display: none; /* previews weggehaald */
+}
+
+#leaveButton {
+  margin-top: 3rem;
+  padding: 1rem 2rem;
+  font-size: 0.8rem;
+  font-family: 'Press Start 2P', monospace;
+  background: black;
+  color: #FF5555;
+  border: 3px solid #FF5555;
+  box-shadow: 0 0 10px #FF5555;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+#leaveButton:hover {
+  background: #222;
+  border-color: #FF5555;
+  box-shadow: 0 0 15px #FF5555, 0 0 20px #FF5555 inset;
+}
+
+p, span {
+  font-size: 0.7rem;
+  text-shadow: 0 0 6px #33CCFF;
+  margin: 0.5rem 0;
+}
+
+#loginContainer {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    font-size: 0.6rem;
+    color: #33CCFF;
+    font-family: 'Press Start 2P', monospace;
+    text-align: right;
+  }
+  
+  #loginStatus {
+    background-color: black;
+    border: 2px solid #33CCFF;
+    padding: 0.5rem;
+    box-shadow: 0 0 6px #33CCFF;
+    margin-bottom: 0.3rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+#snakeCount {
+    color: #66FF66;
+}
+#pongCount {
+    color: #66FF66;
+}
+
+#lobbyCode {
+    color: #66FF66;
+}

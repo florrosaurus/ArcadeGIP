@@ -1,0 +1,108 @@
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+body {
+  background-color: #000;
+  color: #33CCFF;
+  font-family: 'Press Start 2P', monospace;
+  margin: 0;
+  padding: 2rem;
+  min-height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+h1 {
+  color: #FFFF00;
+  text-shadow: 0 0 8px #FFFF00;
+  margin-bottom: 2rem;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 2rem;
+}
+
+input[type="text"],
+input[type="password"] {
+  width: 250px;
+  padding: 0.7rem;
+  margin-bottom: 1rem;
+  border: 2px solid #66FF66;
+  background-color: black;
+  color: #66FF66;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.7rem;
+  text-align: center;
+  box-shadow: 0 0 8px #66FF66;
+}
+
+button {
+  background-color: black;
+  border: 2px solid #33CCFF;
+  color: #33CCFF;
+  padding: 0.8rem 2rem;
+  font-size: 0.7rem;
+  font-family: 'Press Start 2P', monospace;
+  text-transform: uppercase;
+  margin: 0.5rem;
+  cursor: pointer;
+  box-shadow: 0 0 8px #33CCFF;
+  transition: all 0.2s ease;
+}
+
+button:hover {
+  background-color: #111;
+  box-shadow: 0 0 15px #33CCFF;
+  transform: scale(1.05);
+}
+
+#togglePassword {
+  margin-left: 10px;
+  cursor: pointer;
+}
+
+#error {
+  color: #FF5555;
+  font-size: 0.7rem;
+  margin-top: 1rem;
+}
+
+label {
+    font-family: 'Press Start 2P', monospace;
+}
+
+#goBack {
+    margin-top: 3rem;
+    padding: 1rem 2rem;
+    font-size: 0.8rem;
+    font-family: 'Press Start 2P', monospace;
+    background: black;
+    color: #FF5555;
+    border: 3px solid #FF5555;
+    box-shadow: 0 0 10px #FF5555;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+  
+  #goBack:hover {
+    background: #222;
+    border-color: #FF5555;
+    box-shadow: 0 0 15px #FF5555, 0 0 20px #FF5555 inset;
+  }
+
+  #buttonContainer {
+    display: flex;
+    margin-top: .2rem;
+  }
+
+#togglePassword {
+    background-color: black;
+    border: 2px solid #33CCFF;
+    color: #33CCFF;
+    padding: 0.8rem 2rem;
+    font-size: 0.7rem;
+    font-family: 'Press Start 2P', monospace;
+    text-transform: uppercase;
+    cursor: pointer;
+    box-shadow: 0 0 8px #33CCFF;
+    transition: all 0.2s ease;
+}
