@@ -185,13 +185,36 @@ function moveSnake(player) {
 }
 
 // dood gaan
-function handleDeath() { isDead = true; }
+function handleDeath() {
+    isDead = true;
+    console.log(`[DEBUG] handleDeath() called by ${username}`);
+
+    setTimeout(() => {
+        const alive = Object.keys(snakes).filter(p => snakes[p].alive);
+        console.log(`[DEBUG] Alive snakes after death:`, alive);
+
+        if (!winnerEmitted) {
+            checkForWinner();
+        } else {
+            console.log(`[DEBUG] Winner already emitted, skipping checkForWinner`);
+        }
+    }, 50);
+}
 
 // winnaar checken
 function checkForWinner() {
     const alive = Object.keys(snakes).filter(p => snakes[p].alive);
-    if (alive.length === 1 && !winnerEmitted) {
+    console.log("[CHECKWINNER] Levende spelers:", alive);
+
+    if (winnerEmitted) {
+        console.log("[DEBUG] Winner already emitted, skipping checkForWinner");
+        return;
+    }
+
+    if (alive.length === 1) {
         const last = alive[0];
+        console.log("[CHECKWINNER] " + last + " is de enige overlevende");
+
         winner = { name: last, color: snakes[last].color };
         clearInterval(moveInterval);
         gameStarted = false;
@@ -199,21 +222,27 @@ function checkForWinner() {
         rematchButton.style.display = "inline-block";
         rematchButton.disabled = false;
         returnButton.disabled = false;
-
         rematchCounter.innerText = `(0/${playerList.length})`;
 
-        // alleen eerste speler emit
         if (amIFoodMaster) {
+            console.log("[WINNER_EMIT] Ik ben de foodmaster, emit winner_update");
             socket.emit("winner_update", {
-                code: code,
+                code,
                 winner: last,
                 color: snakes[last].color,
-                scores: scores,
+                scores,
                 game: "snake"
             });
+            winnerEmitted = true;
+        } else {
+            console.log("[WINNER_EMIT] Ik ben GEEN foodmaster, ik emit niet");
         }
 
-        winnerEmitted = true;
+    } else if (alive.length === 0) {
+        console.log("[CHECKWINNER] niemand leeft nog");
+        // evt: no winner
+    } else {
+        console.log("[CHECKWINNER] nog meerdere alive, geen winnaar");
     }
 }
 
@@ -439,6 +468,27 @@ socket.on("return_lobby", (data) => {
     }
 
     window.location.href = "/lobby.html?code=" + data.code;
+});
+
+socket.on("winner_update", data => {
+    if (amIFoodMaster) return; // de emitter hoeft dit niet nog eens te verwerken
+
+    console.log("[WINNER_RECEIVED] update ontvangen:", data);
+
+    winner = {
+        name: data.winner,
+        color: data.color
+    };
+    scores = data.scores || {};
+    isDead = true;
+    gameStarted = false;
+    clearInterval(moveInterval);
+    drawSnakes();
+
+    rematchButton.style.display = "inline-block";
+    rematchButton.disabled = false;
+    returnButton.disabled = false;
+    rematchCounter.innerText = `(0/${playerList.length})`;
 });
 
 socket.on("disconnect", reason => {

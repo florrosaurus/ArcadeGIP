@@ -1,5 +1,3 @@
-/* 🎮 lobby.css - Retro-Pixel Arcade Stijl (nettere versie) */
-
 @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 
 body {
@@ -73,11 +71,11 @@ h1 {
   font-size: 0.7rem;
   margin-top: 0.5rem;
   color: #66FF66;
-  text-shadow: 0 0 6px #66FF66;
+  text-shadow: 0 0 4px #66FF66;
 }
 
 .previewCanvas {
-  display: none; /* previews weggehaald */
+  display: none;
 }
 
 #leaveButton {
@@ -94,9 +92,10 @@ h1 {
 }
 
 #leaveButton:hover {
-  background: #222;
+  background: black;
   border-color: #FF5555;
   box-shadow: 0 0 15px #FF5555, 0 0 20px #FF5555 inset;
+  transform: scale(1.05);
 }
 
 p, span {
@@ -121,7 +120,6 @@ p, span {
     padding: 0.5rem;
     box-shadow: 0 0 6px #33CCFF;
     margin-bottom: 0.3rem;
-    cursor: pointer;
     transition: all 0.2s ease;
   }
 
@@ -131,7 +129,6 @@ p, span {
 #pongCount {
     color: #66FF66;
 }
-
 #lobbyCode {
     color: #66FF66;
 }

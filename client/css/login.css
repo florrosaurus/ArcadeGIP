@@ -26,6 +26,7 @@ input[type="password"] {
   width: 250px;
   padding: 0.7rem;
   margin-bottom: 1rem;
+  margin-top: .4rem;
   border: 2px solid #66FF66;
   background-color: black;
   color: #66FF66;
@@ -68,6 +69,7 @@ button:hover {
 
 label {
     font-family: 'Press Start 2P', monospace;
+    text-shadow: 0 0 6px #33CCFF;
 }
 
 #goBack {
@@ -84,7 +86,7 @@ label {
   }
   
   #goBack:hover {
-    background: #222;
+    background: black;
     border-color: #FF5555;
     box-shadow: 0 0 15px #FF5555, 0 0 20px #FF5555 inset;
   }

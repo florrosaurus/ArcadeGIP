@@ -53,7 +53,7 @@ function loadStats(username) {
 function renderStats(s) {
     const statsDiv = document.getElementById("statistics");
     statsDiv.innerHTML = `
-        <h2>statistieken</h2>
+        <h2>Statistics</h2>
         <ul>
             <li>Snake wins: ${s.snake_wins}</li>
             <li>Snake losses: ${s.snake_losses}</li>

@@ -11,6 +11,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
+  text-shadow: 0 0 4px #33CCFF;
   .tabs { 
     display: flex; 
     gap: 1rem;
