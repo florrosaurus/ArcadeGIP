@@ -68,7 +68,7 @@ socket.on("update_game_players", data => {
     const valid = [2, 4].includes(playerList.length);
     if (!valid) {
         warningIcon.style.display = "inline";
-        warningIcon.innerText = "⚠️";
+        warningIcon.innerText = "!";
         warningIcon.title = "pong kan alleen met 2 of 4 spelers gespeeld worden";
         readyButton.disabled = true;
         rematchButton.disabled = true;
@@ -79,7 +79,10 @@ socket.on("update_game_players", data => {
             rematchButton.disabled = false;
         }
     }
-
+    if (!gameStarted && countdown === null) {
+        setupPaddles();     // paddles voorbereiden
+        drawPaddles();      // paddles + scoreboard tonen
+    }    
     if (!gameStarted) drawWaitingState();
 });
 
@@ -106,6 +109,7 @@ socket.on("start_countdown", data => {
     returnButton.disabled = true;
     gameStarted = false;
     winner = null;
+    winnerEmitted = false;
     isDead = false;
 
     clearInterval(countdown);
@@ -227,7 +231,7 @@ function drawWaitingState() {
         ctx.arc(canvas.width / 2, canvas.height / 2, ball?.radius || 8, 0, 2 * Math.PI);
         ctx.fillStyle = "white";
         ctx.fill();
-        ctx.fillText(countdownValue, canvas.width / 2, canvas.height / 2);
+        ctx.fillText(countdownValue, canvas.width / 2, canvas.height / 2 - 60);
     }
 }
 
@@ -287,20 +291,16 @@ function drawPaddles() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     Object.entries(paddles).forEach(([name, paddle]) => {
         if (!paddle.alive) return;
-        ctx.fillStyle = paddle.color;
-        ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height);
-
-        ctx.fillStyle = "white";
-        ctx.font = "12px Arial";
-        ctx.textAlign = "center";
-        if (paddle.side === 'left') {
-            ctx.fillText(name, paddle.x + 20, paddle.y + paddle.height / 2);
-        } else if (paddle.side === 'right') {
-            ctx.fillText(name, paddle.x - 20, paddle.y + paddle.height / 2);
-        } else if (paddle.side === 'top') {
-            ctx.fillText(name, paddle.x + paddle.width / 2, paddle.y + 20);
+        if (name === username) {
+            ctx.save();
+            ctx.shadowColor = "white";
+            ctx.shadowBlur = 20;
+            ctx.fillStyle = paddle.color;
+            ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height);
+            ctx.restore();
         } else {
-            ctx.fillText(name, paddle.x + paddle.width / 2, paddle.y - 10);
+            ctx.fillStyle = paddle.color;
+            ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height);
         }
     });
 
@@ -313,17 +313,24 @@ function drawPaddles() {
 
     if (countdownValue !== null) {
         ctx.fillStyle = "white";
-        ctx.font = "40px Arial";
-        ctx.fillText(countdownValue, canvas.width / 2, canvas.height / 2);
+        ctx.font = "40px 'Press Start 2P', monospace";
+        ctx.textAlign = "center";
+        ctx.fillText(countdownValue, canvas.width / 2, canvas.height / 2 - 60);
     }
 
     if (winner) {
+        ctx.save();
         ctx.fillStyle = winner.color;
-        ctx.font = "30px Arial";
-        ctx.fillText(`${winner.name} heeft gewonnen!`, canvas.width / 2, canvas.height / 2 + 40);
+        ctx.font = "20px 'Press Start 2P', monospace";
+        ctx.textAlign = "center";
+        ctx.shadowColor = winner.color;
+        ctx.shadowBlur = 15;
+        ctx.fillText(`${winner.name} wins!`, canvas.width / 2, canvas.height / 2 + 30);
+        ctx.restore();
     } else if (isDead) {
         ctx.fillStyle = "red";
-        ctx.font = "30px Arial";
+        ctx.font = "30px 'Press Start 2P', monospace";
+        ctx.textAlign = "center";
         ctx.fillText(`GAME OVER`, canvas.width / 2, canvas.height / 2 + 40);
     }
 
@@ -450,15 +457,14 @@ function handleKill(side) {
 }
 
 function drawScoreboard() {
-    ctx.fillStyle = "white";
-    ctx.font = "16px Arial";
-    ctx.textAlign = "left";
-
-    let y = 20;
+    const ul = document.getElementById("scores");
+    if (!ul) return;
+    ul.innerHTML = "";
     playerList.forEach(p => {
-        ctx.fillStyle = paddles[p].color;
-        ctx.fillText(`${p}: ${scores[p] || 0}`, 10, y);
-        y += 20;
+        const li = document.createElement("li");
+        li.style.color = paddles[p]?.color || "white";
+        li.innerText = `${p}: ${scores[p] || 0}`;
+        ul.appendChild(li);
     });
 }
 
@@ -512,6 +518,12 @@ window.addEventListener("keydown", e => {
     }
 });
 
+window.addEventListener("keydown", (e) => {
+    if (["ArrowUp", "ArrowDown", " "].includes(e.key)) {
+        e.preventDefault(); // blokkeert scroll
+    }
+}, { passive: false });    
+   
 window.addEventListener("keyup", () => {
     direction = 0;
 });

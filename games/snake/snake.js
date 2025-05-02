@@ -100,21 +100,30 @@ function drawSnakes() {
     });
 
     if (countdownValue !== null && !gameStarted) {
-        ctx.fillStyle = "black";
-        ctx.font = "50px Arial";
-        ctx.fillText(countdownValue, canvas.width / 2 - 10, canvas.height / 2);
-    }
+        ctx.fillStyle = "white";
+        ctx.font = "40px 'Press Start 2P', monospace";
+        ctx.textAlign = "center";
+        ctx.fillText(countdownValue, canvas.width / 2, canvas.height / 2 - 60);
+    }    
 
     if (winner && !gameStarted) {
+        ctx.save();
         ctx.fillStyle = winner.color;
-        ctx.font = "30px Arial";
-        ctx.fillText(`${winner.name} heeft gewonnen!`, canvas.width / 2 - 100, canvas.height / 2 + 50);
-    } else if (isDead && !gameStarted) {
+        ctx.font = "20px 'Press Start 2P', monospace";
+        ctx.textAlign = "center";
+        ctx.shadowColor = winner.color;
+        ctx.shadowBlur = 15;
+        ctx.fillText(`${winner.name} wins!`, canvas.width / 2, canvas.height / 2 + 30);
+        ctx.restore();
+    } else if (isDead && !gameStarted && !winner) {
+        ctx.save();
         ctx.fillStyle = "red";
-        ctx.font = "30px Arial";
-        ctx.fillText("GAME OVER", canvas.width / 2 - 80, canvas.height / 2 + 50);
-    }
-}
+        ctx.font = "30px 'Press Start 2P', monospace";
+        ctx.textAlign = "center";
+        ctx.shadowColor = "red";
+        ctx.shadowBlur = 15;
+        ctx.fillText("GAME OVER", canvas.width / 2 - 80, canvas.height / 2 + 50); 
+}};
 
 // keyboard controls
 window.addEventListener("keydown", e => {
@@ -126,6 +135,12 @@ window.addEventListener("keydown", e => {
         socket.emit("snake_move", { code, username, direction: dir });
     }
 });
+
+window.addEventListener("keydown", (e) => {
+    if (["ArrowUp", "ArrowDown", " "].includes(e.key)) {
+        e.preventDefault(); // blokkeert scroll
+    }
+}, { passive: false });
 
 // direction validatie
 function isValidDirection(newDir) {

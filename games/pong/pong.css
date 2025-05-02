@@ -1,27 +1,162 @@
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+body {
+  background-color: black;
+  color: #33CCFF;
+  font-family: 'Press Start 2P', monospace;
+  margin: 0;
+  padding: 2rem;
+  overflow: hidden auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  min-height: 100vh;
+  text-shadow: 0 0 6px #33CCFF;
+}
+
+/* sterren achtergrond */
+#starCanvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: -2;
+  pointer-events: none;
+  background: linear-gradient(135deg, #000000, #0a0a0a);
+}
+
+/* Titel */
+h1 {
+  font-size: 2rem;
+  color: #FFFF00;
+  text-shadow: 0 0 6px #FFFF00;
+  margin-bottom: 1rem;
+}
+
+/* Info bij spelers */
 .player-container {
-    display: flex;
-    align-items: center; /* Zorgt ervoor dat alles op één lijn staat */
-    gap: 8px; /* Extra ruimte tussen tekst en warning icon */
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  margin-bottom: 1rem;
+  font-size: 0.8rem;
+  text-shadow: 0 0 6px #33CCFF;
 }
 
+/* Waarschuwingsicoon */
 .warning-icon {
-    display: none; /* standaard verborgen */
-    color: red;
-    font-weight: bold;
-    cursor: help;
-    margin-left: 5px;
+  display: none;
+  color: red;
+  font-weight: bold;
+  cursor: help;
 }
 
-.ready-container {
-    display: flex;
-    justify-content: center;
-    gap: 10px;
-    margin: 20px 0;
+/* Buttons (READY / REMATCH / RETURN) */
+.ready-container, #returnButton {
+  margin-top: .1rem;
 }
 
+button {
+  background-color: black;
+  border: 2px solid #33CCFF;
+  color: #33CCFF;
+  padding: 1rem 2rem;
+  font-size: 0.8rem;
+  font-family: 'Press Start 2P', monospace;
+  text-transform: uppercase;
+  margin: 0.5rem;
+  cursor: pointer;
+  box-shadow: 0 0 6px #33CCFF;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+button:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 15px #33CCFF;
+}
+
+/* Terugknop apart */
+#returnButton {
+  margin-top: 3rem;
+  background: black;
+  color: #FF5555;
+  border: 3px solid #FF5555;
+  box-shadow: 0 0 10px #FF5555;
+  cursor: pointer;
+}
+
+#returnButton:hover {
+  background: black;
+  border-color: #FF5555;
+  box-shadow: 0 0 15px #FF5555, 0 0 20px #FF5555 inset;
+}
+
+/* Game-gebied */
+#gameArea {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 2rem;
+}
+
+/* Canvas voor het spel */
 #gameCanvas {
-    display: block;
-    margin: auto;
-    background-color: black;
-    border: 2px solid white;
+  display: block;
+  background-color: black;
+  border: 4px solid #33CCFF;
+  box-shadow: 0 0 15px #33CCFF;
+  margin-top: 0.25rem;
 }
+
+/* Scorebord */
+#scoreBoard {
+  position: absolute;
+  top: 50%;
+  left: 100%;
+  transform: translate(30px, -50%);
+  background-color: black;
+  border: 2px solid #33CCFF;
+  box-shadow: 0 0 10px #33CCFF;
+  padding: 1rem;
+  color: #33CCFF;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.7rem;
+  width: 180px;
+  text-align: center;
+}
+
+#scoreBoard h3 {
+  color: #FFFF00;
+  margin-bottom: 1rem;
+  text-shadow: 0 0 8px #FFFF00;
+}
+
+#scores {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+#scores li {
+  margin: 0.3rem 0;
+  text-shadow: 0 0 3px currentColor;
+}
+
+#playersInGameCount {
+  color: #66FF66;
+  text-shadow: 0 0 6px #66FF66;
+}
+
+#starCanvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: -2;
+    pointer-events: none;
+    background: linear-gradient(135deg, #000000, #0a0a0a);
+  }
