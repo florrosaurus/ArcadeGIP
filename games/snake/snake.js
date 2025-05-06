@@ -346,7 +346,7 @@ socket.on("update_game_players", data => {
     
     if (playerList.length < 2) {
         warningIcon.style.display = "inline";
-        warningIcon.innerText = "⚠️";
+        warningIcon.innerText = "!";
         warningIcon.title = "te weinig spelers voor snake";
 
         // lock knoppen
@@ -486,7 +486,7 @@ socket.on("return_lobby", (data) => {
 });
 
 socket.on("winner_update", data => {
-    if (amIFoodMaster) return; // de emitter hoeft dit niet nog eens te verwerken
+    if (amIFoodMaster) return;
 
     console.log("[WINNER_RECEIVED] update ontvangen:", data);
 
