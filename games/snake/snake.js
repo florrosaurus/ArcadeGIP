@@ -208,7 +208,7 @@ function handleDeath() {
         const alive = Object.keys(snakes).filter(p => snakes[p].alive);
         console.log(`[DEBUG] Alive snakes after death:`, alive);
 
-        if (!winnerEmitted) {
+        if (!gameStarted && !winnerEmitted) {
             checkForWinner();
         } else {
             console.log(`[DEBUG] Winner already emitted, skipping checkForWinner`);
@@ -229,7 +229,7 @@ function checkForWinner() {
     if (alive.length === 1) {
         const last = alive[0];
         console.log("[CHECKWINNER] " + last + " is de enige overlevende");
-
+    
         winner = { name: last, color: snakes[last].color };
         clearInterval(moveInterval);
         gameStarted = false;
@@ -238,7 +238,9 @@ function checkForWinner() {
         rematchButton.disabled = false;
         returnButton.disabled = false;
         rematchCounter.innerText = `(0/${playerList.length})`;
-
+    
+        winnerEmitted = true;
+    
         if (amIFoodMaster) {
             console.log("[WINNER_EMIT] Ik ben de foodmaster, emit winner_update");
             socket.emit("winner_update", {
@@ -248,7 +250,6 @@ function checkForWinner() {
                 scores,
                 game: "snake"
             });
-            winnerEmitted = true;
         } else {
             console.log("[WINNER_EMIT] Ik ben GEEN foodmaster, ik emit niet");
         }
@@ -287,6 +288,7 @@ socket.on("start_countdown", data => {
     rematchButton.style.display = "none";
     returnButton.disabled = true;
     winner = null;
+    winnerEmitted = false;
     isDead = false;
     gameStarted = false;
     clearInterval(moveInterval);
@@ -498,6 +500,7 @@ socket.on("winner_update", data => {
     isDead = true;
     gameStarted = false;
     clearInterval(moveInterval);
+    winnerEmitted = false;
     drawSnakes();
 
     rematchButton.style.display = "inline-block";
