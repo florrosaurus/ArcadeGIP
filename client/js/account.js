@@ -55,12 +55,14 @@ function renderStats(s) {
     statsDiv.innerHTML = `
         <h2>Statistics</h2>
         <ul>
-            <li>snake wins: ${s.snake_wins}</li>
-            <li>snake losses: ${s.snake_losses}</li>
-            <li>snake highscore: ${s.snake_highscore}</li>
-            <li>pong wins: ${s.pong_wins}</li>
-            <li>pong losses: ${s.pong_losses}</li>
-            <li>totaal aantal wins: ${s.total_wins}</li>
+            <li>Snake wins: ${s.snake_wins}</li>
+            <li>Snake losses: ${s.snake_losses}</li>
+            <li>Snake highscore: ${s.snake_highscore}</li>
+            <br>
+            <li>Pong wins: ${s.pong_wins}</li>
+            <li>Pong losses: ${s.pong_losses}</li>
+            <br>
+            <li>Total wins: ${s.total_wins}</li>
         </ul>
     `;
 }
@@ -83,24 +85,22 @@ function closePopup() {
 // Naam wijzigen
 function openChangeName() {
     openPopup(`
-        <h3>Naam wijzigen</h3>
-        <input type="text" id="newName" placeholder="Nieuwe naam" maxlength="20"><br>
-        <input type="password" id="confirmPassword" placeholder="Wachtwoord ter bevestiging"><br>
-        <button onclick="submitNameChange()">Bevestigen</button>
-        <button onclick="closePopup()">Annuleren</button>
+        <h3>Change Name</h3>
+        <input type="text" id="newName" placeholder="New name" maxlength="20"><br>
+        <input type="password" id="confirmPassword" placeholder="Confirm password"><br>
+        <button onclick="submitNameChange()">Confirm</button>
+        <button onclick="closePopup()">Cancel</button>
     `);
 }
 
 // Wachtwoord wijzigen
 function openChangePassword() {
     openPopup(`
-        <h3>Wachtwoord wijzigen</h3>
-        <input type="password" id="oldPassword" placeholder="Huidig wachtwoord"><br>
-        <span class="toggle-password" onclick="togglePassword('oldPassword', this)">👁️</span>
-        <input type="password" id="newPassword" placeholder="Nieuw wachtwoord"><br>
-        <span class="toggle-password" onclick="togglePassword('newPassword', this)">👁️</span>
-        <button onclick="submitPasswordChange()">Bevestigen</button>
-        <button onclick="closePopup()">Annuleren</button>
+        <h3>Change Password</h3>
+        <input type="password" id="oldPassword" placeholder="Current password"><br>
+        <input type="password" id="newPassword" placeholder="New password"><br>
+        <button onclick="submitPasswordChange()">Confirm</button>
+        <button onclick="closePopup()">Cancel</button>
     `);
 }
 
